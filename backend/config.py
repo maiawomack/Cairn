@@ -114,6 +114,11 @@ CARTESIA_VERSION = os.environ.get("CARTESIA_VERSION") or "2026-08-14"
 # Raw PCM the browser decodes itself; 16 bit at 24 kHz keeps each streamed chunk small.
 VOICE_SAMPLE_RATE = 24000
 VOICE_ENCODING = "pcm_s16le"
+# A short attention chime plays before the spoken audio. Warnings and guidance: the normal
+# chime; briefings: a softer one; confirmations ("You're on ..."): none. The dashboard
+# synthesizes the tones (frontend/app.js).
+VOICE_CHIME = {"warning": "normal", "guidance": "normal", "briefing": "soft", "on_line": None}
+
 # generation_config per style (Sonic treats these as guidance). speed 0.6-1.5, volume 0.5-2.0.
 VOICE_STYLES = {
     "firm": {"speed": 1.2, "volume": 1.4, "emotion": "determined"},  # warnings: firm and quick

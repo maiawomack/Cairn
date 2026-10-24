@@ -607,15 +607,47 @@ const utterances = {}; // utterance id -> { sampleRate, nextTime, leftover }
 function handleVoice(message) {
   const { type, data } = message;
   if (type === "start") {
-    utterances[data.utterance] = { sampleRate: data.sample_rate, nextTime: 0, leftover: null };
+    // The chime goes first; the speech is queued to start right after it.
+    const chimeEnds = playChime(data.chime);
+    utterances[data.utterance] = { sampleRate: data.sample_rate, nextTime: chimeEnds, leftover: null };
   } else if (type === "chunk") {
     playChunk(utterances[data.utterance], data.audio);
   } else if (type === "end") {
     delete utterances[data.utterance];
   } else if (type === "unavailable" || type === "error") {
-    // Never silent: speak the line with the browser's own voice instead.
-    speakWithBrowser(data.line);
+    // Never silent: chime, then speak the line with the browser's own voice instead.
+    const chimeSeconds = playChime(data.chime) - (audioContext ? audioContext.currentTime : 0);
+    setTimeout(() => speakWithBrowser(data.line), Math.max(0, chimeSeconds) * 1000);
   }
+}
+
+// Attention chime: two short sine notes with a soft attack and decay. "normal" is clear and
+// bright; "soft" is lower and much quieter; anything else (confirmations) plays nothing.
+// Returns the audio clock time at which the chime (and a short gap) is over.
+const CHIMES = {
+  normal: { notes: [880, 1174.7], gain: 0.22, noteSeconds: 0.17 },
+  soft: { notes: [587.3, 784], gain: 0.07, noteSeconds: 0.2 },
+};
+const CHIME_GAP_SECONDS = 0.15;
+
+function playChime(kind) {
+  const chime = CHIMES[kind];
+  const now = audioContext ? audioContext.currentTime : 0;
+  if (!chime || !audioContext) return now;
+  chime.notes.forEach((frequency, i) => {
+    const start = now + 0.02 + i * chime.noteSeconds * 0.8;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(chime.gain, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + chime.noteSeconds + 0.12);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + chime.noteSeconds + 0.15);
+  });
+  return now + 0.02 + chime.noteSeconds * 0.8 + chime.noteSeconds + 0.12 + CHIME_GAP_SECONDS;
 }
 
 function playChunk(utterance, base64) {
@@ -724,6 +756,7 @@ function addLogLine(message) {
   const time = document.createElement("time");
   time.textContent = new Date(message.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const data = message.data || {};
+  const chimeNote = message.from === "voice" && "chime" in data ? ` · chime ${data.chime || "none"}` : "";
   const detail = data.status
     ? `${data.status}${data.first_audio_ms != null ? `, first audio ${data.first_audio_ms} ms` : ""}${data.reason ? `: ${data.reason}` : ""}`
     : data.line
@@ -731,7 +764,7 @@ function addLogLine(message) {
     : data.zone_id
       ? `${data.zone_id} ${data.distance_m} m (${data.reason}, ${data.speed_kmh} km/h)`
       : data.error || data.status || "";
-  item.append(time, `${message.from.replace("creao:", "")} ${message.type} ${detail}`.trim());
+  item.append(time, `${message.from.replace("creao:", "")} ${message.type} ${detail}${chimeNote}`.trim());
   list.prepend(item);
   while (list.children.length > LOG_LENGTH) list.lastChild.remove();
 }

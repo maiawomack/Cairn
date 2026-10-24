@@ -56,7 +56,10 @@ async def speak(line, zone_type, level, publish):
     """Stream one line to the dashboard. Returns a summary dict (also published as voice / spoken)."""
     utterance = uuid.uuid4().hex[:8]
     parts = style_parts(line, zone_type, level)
-    base = {"utterance": utterance, "line": line, "styles": [s for _, s in parts]}
+    # chime: "normal", "soft" or None. Sent with every voice message so the dashboard can play it
+    # first, whether the audio comes from Sonic or from the browser fallback.
+    base = {"utterance": utterance, "line": line, "styles": [s for _, s in parts], "level": level,
+            "chime": config.VOICE_CHIME.get(level)}
 
     missing = [v for v in ("CARTESIA_API_KEY", "CARTESIA_VOICE_ID") if not os.environ.get(v)]
     if missing:
