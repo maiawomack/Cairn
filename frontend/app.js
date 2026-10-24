@@ -411,7 +411,10 @@ function addLogLine(message) {
   const item = document.createElement("li");
   const time = document.createElement("time");
   time.textContent = new Date(message.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const detail = message.data?.error || message.data?.status || "";
+  const data = message.data || {};
+  const detail = data.zone_id
+    ? `${data.zone_id} ${data.distance_m} m (${data.reason}, ${data.speed_kmh} km/h)`
+    : data.error || data.status || "";
   item.append(time, `${message.from.replace("creao:", "")} ${message.type} ${detail}`.trim());
   list.prepend(item);
   while (list.children.length > LOG_LENGTH) list.lastChild.remove();

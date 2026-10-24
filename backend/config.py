@@ -20,3 +20,27 @@ def load_env(path=ENV_FILE):
 
 
 load_env()
+
+
+def _number(name, default):
+    return float(os.environ.get(name, default))
+
+
+# ---- Geofence tuning (one place; override any of these in .env) ----
+
+# GPS fixes the smoother fits a line through (1 Hz, so about this many seconds).
+GEOFENCE_SMOOTHING_FIXES = int(_number("GEOFENCE_SMOOTHING_FIXES", 5))
+# Warning distance = base + speed x lead time. The lead time covers speaking the
+# warning (about 3 s), reacting (about 1.5 s) and stopping on snow, with margin.
+GEOFENCE_WARNING_BASE_M = _number("GEOFENCE_WARNING_BASE_M", 30)
+GEOFENCE_WARNING_LEAD_S = _number("GEOFENCE_WARNING_LEAD_S", 8)
+# Closer than this to a zone warns whatever the heading (slow skiers, sharp turns).
+GEOFENCE_NEAR_M = _number("GEOFENCE_NEAR_M", 15)
+# The path ahead counts as reaching a zone if it passes within this margin of it.
+GEOFENCE_PATH_MARGIN_M = _number("GEOFENCE_PATH_MARGIN_M", 10)
+# Consecutive smoothed fixes that must agree before warning, so one noisy point never warns.
+GEOFENCE_CONFIRM_FIXES = int(_number("GEOFENCE_CONFIRM_FIXES", 2))
+
+
+def warning_distance_m(speed_m_s):
+    return GEOFENCE_WARNING_BASE_M + speed_m_s * GEOFENCE_WARNING_LEAD_S

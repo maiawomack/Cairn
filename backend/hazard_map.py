@@ -127,10 +127,11 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
     }
 
 
-def save(hazard_map):
-    """Write hazard_map.json and the demo copy hazard_map.cached.json."""
+def save(hazard_map, cached=True):
+    """Write hazard_map.json and, for a complete chain, the demo copy hazard_map.cached.json."""
     HAZARD_MAP_FILE.write_text(json.dumps(hazard_map, indent=1))
-    shutil.copyfile(HAZARD_MAP_FILE, CACHED_FILE)
+    if cached:
+        shutil.copyfile(HAZARD_MAP_FILE, CACHED_FILE)
 
 
 def save_output(role, output):
@@ -145,10 +146,15 @@ def load_output(role):
 def main():
     runs_file = OUTPUTS_DIR / "creao_runs.json"
     creao_runs = json.loads(runs_file.read_text()) if runs_file.exists() else []
-    hazard_map = build(load_output("conditions"), load_output("terrain"), load_output("route"), creao_runs)
-    save(hazard_map)
-    print(f"wrote {HAZARD_MAP_FILE.relative_to(DATA_DIR.parent)} and {CACHED_FILE.name}: "
-          f"{len(hazard_map['zones'])} zones, {len(hazard_map['safe_exits'])} exits")
+    complete = (OUTPUTS_DIR / "route.json").exists()
+    if not complete:
+        print("no Route Planner output yet: plans left empty, demo copy not written")
+    route = load_output("route") if complete else {}
+    hazard_map = build(load_output("conditions"), load_output("terrain"), route, creao_runs)
+    hazard_map["complete"] = complete
+    save(hazard_map, cached=complete)
+    written = HAZARD_MAP_FILE.name + (f" and {CACHED_FILE.name}" if complete else "")
+    print(f"wrote {written}: {len(hazard_map['zones'])} zones, {len(hazard_map['safe_exits'])} exits")
 
 
 if __name__ == "__main__":
