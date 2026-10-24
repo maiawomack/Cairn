@@ -17,6 +17,8 @@ from pathlib import Path
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 ZONES_FILE = DATA_DIR / "hazard_zones.geojson"
 EXITS_FILE = DATA_DIR / "safe_exits.geojson"
+SAFE_LINES_FILE = DATA_DIR / "safe_lines.geojson"
+OSM_HAZARDS_FILE = DATA_DIR / "osm_hazards.geojson"
 OUTPUTS_DIR = DATA_DIR / "agent_outputs"
 HAZARD_MAP_FILE = DATA_DIR / "hazard_map.json"
 CACHED_FILE = DATA_DIR / "hazard_map.cached.json"
@@ -33,6 +35,10 @@ def load_zones():
 
 def load_exits():
     return json.loads(EXITS_FILE.read_text())["features"]
+
+
+def load_safe_lines():
+    return json.loads(SAFE_LINES_FILE.read_text())["features"] if SAFE_LINES_FILE.exists() else []
 
 
 def zone_list():
@@ -58,6 +64,13 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
     """Return the merged hazard map dict. warn(message) reports anything dropped or defaulted."""
     zones = load_zones()
     exits = load_exits()
+    safe_lines = load_safe_lines()
+    safe_line_for = {zone_id: f["properties"]["id"] for f in safe_lines for zone_id in f["properties"]["for_zones"]}
+    cliff_lines = {}
+    for f in json.loads(OSM_HAZARDS_FILE.read_text())["features"]:
+        g = f["geometry"]
+        parts = [g["coordinates"]] if g["type"] == "LineString" else g["coordinates"] if g["type"] == "MultiLineString" else []
+        cliff_lines[f["properties"]["osm_id"]] = [latlon(part) for part in parts]
     zone_ids = {z["properties"]["id"] for z in zones}
     exit_ids = {e["properties"]["id"] for e in exits}
 
@@ -88,6 +101,11 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
             "applies_to": annotation.get("applies_to", DEFAULT_ANNOTATION["applies_to"]),
             "hint": annotation.get("hint"),
             "annotated_by": "terrain_scout" if p["id"] in annotations else "default",
+            # Expert zones: the hazards to name in the entry briefing. Cliffs: the safe line to name in guidance.
+            "hazards_inside": p.get("hazards_inside", []),
+            "safe_line": safe_line_for.get(p["id"]),
+            # Cliffs: the OSM cliff line(s), drawn so the drop is on the right (geofence.py).
+            "cliff_lines": cliff_lines.get(p["osm_id"]) if p["type"] == "cliff" else None,
             "polygon": latlon(zone["geometry"]["coordinates"][0]),
         })
 
@@ -122,6 +140,10 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
         "conditions": conditions,
         "planner_notes": conditions_output.get("planner_notes"),
         "zones": merged_zones,
+        "safe_lines": [
+            {k: f["properties"][k] for k in ("id", "name", "bowl")} | {"path": latlon(f["geometry"]["coordinates"])}
+            for f in safe_lines
+        ],
         "safe_exits": [
             {k: e["properties"][k] for k in ("id", "from_zone", "name")} | {"path": latlon(e["geometry"]["coordinates"])}
             for e in exits

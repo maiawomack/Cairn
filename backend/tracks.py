@@ -17,6 +17,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 TRACKS_DIR = DATA_DIR / "tracks"
 RUNS_FILE = DATA_DIR / "blackcomb_runs.geojson"
 OSM_HAZARDS_FILE = DATA_DIR / "osm_hazards.geojson"
+ZONES_FILE = DATA_DIR / "hazard_zones.geojson"
 
 RATE_HZ = 1
 
@@ -125,17 +126,55 @@ def simulate(route, legs, seed):
     return points, truth
 
 
+def below_ladder(line):
+    """Drop the start of a line that lies inside the Spanky's Ladder entrance zone, so the
+    scenario's first briefing is the bowl's, not a second one for the Ladder."""
+    zones = json.loads(ZONES_FILE.read_text())["features"]
+    ladder = next(z for z in zones if z["properties"]["id"] == "spankys-ladder-entrance")
+    ring = [to_xy(p) for p in ladder["geometry"]["coordinates"][0]]
+    route = Route(line)
+    s = next(s for s in range(0, int(route.length), 2) if not point_in_ring(route.at(s)[0], ring))
+    return [route.at(s)[0]] + [p for p, c in zip(line, route.cumulative) if c > s]
+
+
+def point_in_ring(p, ring):
+    result = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        if (y1 > p[1]) != (y2 > p[1]) and p[0] < (x2 - x1) * (p[1] - y1) / (y2 - y1) + x1:
+            result = not result
+    return result
+
+
+def until_leaving(line, zone_id):
+    """Cut a line where it leaves a zone it has entered."""
+    zones = json.loads(ZONES_FILE.read_text())["features"]
+    zone = next(z for z in zones if z["properties"]["id"] == zone_id)
+    ring = [to_xy(p) for p in zone["geometry"]["coordinates"][0]]
+    route = Route(line)
+    entered = False
+    for s in range(0, int(route.length), 2):
+        inside_now = point_in_ring(route.at(s)[0], ring)
+        if entered and not inside_now:
+            return [p for p, c in zip(line, route.cumulative) if c < s] + [route.at(s)[0]]
+        entered = entered or inside_now
+    return line
+
+
 def scenario_1():
-    """Intermediate skis the top of Panorama, a groomed blue, and stays on it."""
-    panorama = osm_line(RUNS_FILE, "way/49618443")  # drawn top to bottom in OSM
-    route = Route(panorama)
-    route = Route([route.at(s)[0] for s in range(0, 1201, 10)])  # top 1.2 km
-    points, truth = simulate(route, [(route.length, 34, 7, 5)], seed=1)
+    """Advanced skier drops in below Spanky's Ladder and skis a clean line down Garnet Bowl Left.
+
+    The track ends where the line leaves Garnet Bowl: past that, the mapped line runs out
+    toward spankys-cliff-band-2, and guidance there is correct, not part of this scenario.
+    """
+    garnet_left = until_leaving(below_ladder(osm_line(RUNS_FILE, "way/1167852432")), "garnet-bowl")
+    route = Route(garnet_left)
+    points, truth = simulate(route, [(route.length, 36, 8, 4)], seed=11)
     return {
         "id": "scenario_1",
-        "description": "Intermediate stays on Panorama, a groomed intermediate run",
-        "ability": "intermediate",
-        "expected": "silence",
+        "description": "Advanced skier on a clean line down Garnet Bowl Left",
+        "ability": "advanced",
+        "expected": "only the Garnet Bowl entry briefing",
+        "target_zone": "garnet-bowl",
         "rate_hz": RATE_HZ,
         "points": points,
         "truth": truth,
@@ -143,32 +182,31 @@ def scenario_1():
 
 
 def scenario_2():
-    """Intermediate comes down Rock Alley, misses its bend at the Ladder and drifts onto the cliff band."""
-    rock_alley = osm_line(RUNS_FILE, "way/461517643")
-    cliff = osm_line(OSM_HAZARDS_FILE, "way/1172043856")  # spankys-cliff-band-1
+    """Advanced skier on Garnet Bowl Right in flat light drifts off the line onto garnet-cliff-band-1."""
+    garnet_right = below_ladder(osm_line(RUNS_FILE, "way/907542959"))  # drawn top to bottom in OSM
+    cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1, low side on its right
 
-    leave = rock_alley[12]  # just past the Spanky's Ladder entrance, before Rock Alley bends west
-    # Aim at the south end of the cliff line, 25% along its first segment. Approaching
-    # straight up the ridge keeps about 20 m clear of chimney-ladder-closure-1, whose
-    # corner sits just west of the cliff band.
-    target = (cliff[0][0] + 0.25 * (cliff[1][0] - cliff[0][0]), cliff[0][1] + 0.25 * (cliff[1][1] - cliff[0][1]))
-    # Keep going north along the ridge instead of following the run's bend, then onto the cliff.
-    pull = (leave[0] + 8, leave[1] + 110)
-    route = Route(rock_alley[:13] + bezier(leave, pull, target))
-    on_run_m = Route(rock_alley[:13]).length
+    on_line = Route(garnet_right)
+    leave_s = on_line.length * 0.55
+    leave, heading = on_line.at(leave_s)
+    # Aim at the middle of the cliff line, approaching from its high (left) side: with
+    # no contrast in flat light the skier keeps drifting with the fall line.
+    target = cliff[len(cliff) // 2]
+    pull = (leave[0] + heading[0] * 40, leave[1] + heading[1] * 40)
+    route = Route([p for p, c in zip(garnet_right, on_line.cumulative) if c < leave_s] + [leave]
+                  + bezier(leave, pull, target))
 
     legs = [
-        (on_run_m, 28, 6, 5),         # confident turns on Rock Alley
-        (on_run_m + 60, 20, 3, 7),    # leaves the run, turns get smaller
-        (route.length, 15, 2, 8),     # slow, hesitant drift along the ridge onto the cliff band
+        (leave_s, 24, 6, 5),          # cautious turns on the line: flat light, little contrast
+        (route.length, 20, 3, 7),     # drifting off the line, turns getting smaller
     ]
-    points, truth = simulate(route, legs, seed=2)
+    points, truth = simulate(route, legs, seed=12)
     return {
         "id": "scenario_2",
-        "description": "Intermediate leaves Rock Alley at Spanky's Ladder and drifts onto spankys-cliff-band-1",
-        "ability": "intermediate",
-        "expected": "warning for spankys-cliff-band-1 early enough to stop, plus safe line",
-        "target_zone": "spankys-cliff-band-1",
+        "description": "Advanced skier on Garnet Bowl Right in flat light drifts toward garnet-cliff-band-1",
+        "ability": "advanced",
+        "expected": "Garnet Bowl entry briefing, then guidance for garnet-cliff-band-1 in time to change line",
+        "target_zone": "garnet-cliff-band-1",
         "rate_hz": RATE_HZ,
         "points": points,
         "truth": truth,

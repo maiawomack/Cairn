@@ -141,11 +141,12 @@ const HAZARD_LAYERS = [
     paint: { "fill-pattern": "hatch" },
   },
   {
+    // Expert terrain is where Cairn's skiers want to be, not a hazard: a faint wash, no hatching.
     id: "expert-hatch",
     type: "fill",
     source: "zones",
     filter: ["==", ["get", "type"], "expert_terrain"],
-    paint: { "fill-pattern": "hatch-expert" },
+    paint: { "fill-color": EXPERT_COLOR, "fill-opacity": 0.05 },
   },
   {
     id: "zone-outline",
@@ -261,7 +262,6 @@ function hatchImage(color) {
 // style.load, not load: load waits for every terrain tile, which can take a while.
 map.on("style.load", () => {
   map.addImage("hatch", hatchImage("rgba(178, 58, 58, 0.55)"));
-  map.addImage("hatch-expert", hatchImage("rgba(47, 47, 51, 0.45)"));
   for (const layer of HAZARD_LAYERS) {
     map.addLayer(layer, "runs-hover");
   }
@@ -485,8 +485,8 @@ let bannerTimer = null;
 
 function showBanner(decision) {
   const banner = document.getElementById("spoken-banner");
-  const isWarning = decision.level === "warning";
-  banner.className = `spoken-banner${isWarning ? " warning" : ""}`;
+  // Loud only for warnings; guidance gets a red accent, briefings stay calm.
+  banner.className = `spoken-banner ${decision.level}`;
   const via = Object.assign(document.createElement("small"), {
     textContent: `${decision.zone_id} · words by ${decision.path.replace("_", " ")}`,
   });

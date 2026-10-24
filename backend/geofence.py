@@ -3,12 +3,16 @@
     python backend/geofence.py    run scenario 1 and 2 through the geofence and report
 
 For each fix the skier's position, speed and heading come from a straight line fitted
-through the last few fixes (no lag, and a single jumpy point barely moves it). A zone
-that is active and applies to the skier's ability warns when the skier is inside it,
-within a near distance of it, or heading so that the path ahead reaches it within the
-speed scaled warning distance. Tuning lives in config.py.
+through the last few fixes (no lag, and a single jumpy point barely moves it). Cairn
+serves advanced and expert skiers (CLAUDE.md):
+  - entering expert terrain gives a calm briefing, never a warning
+  - a cliff on the skier's trajectory gives guidance (hazard + safe line); inside the
+    cliff zone or within CLIFF_STOP_M it becomes a "stop" warning
+  - closures and the boundary are hard warnings
+A zone is "on trajectory" when the skier is within a near distance of it, or heading so
+that the path ahead reaches it within the speed scaled look ahead. Tuning is in config.py.
 
-Hard rule (CLAUDE.md): a cliff zone hit always warns. This module decides that a zone
+Hard rule (CLAUDE.md): a cliff zone hit always alerts. This module decides that a zone
 is close; Claude only chooses the words later.
 """
 
@@ -72,34 +76,20 @@ def fit_motion(fixes):
 
 
 def alert_levels(hazard_map, ability):
-    """Which zones alert this skier, and how: ({zone id: "warning" | "heads_up"}, source).
+    """How each active zone alerts this skier: ({zone id: "briefing" | "cliff" | "warning"}, source).
 
-    With a Route Planner plan for the ability: off_limits zones warn; for advanced and
-    expert, a reroute with exit_id null is a one time calm heads up. For beginner and
-    intermediate, other reroute zones also warn, and an active cliff always warns even if
-    the plan leaves it out (CLAUDE.md: no agent can make a cliff disappear).
-    Until the Route Planner has run, every active zone whose applies_to has the ability warns.
+    Cairn serves advanced and expert skiers in the Glacier bowls (CLAUDE.md), so the zone
+    type decides, for every ability:
+      - expert terrain: a calm briefing on entry, never a warning
+      - cliff: guidance on trajectory, a "stop" warning only inside the zone or within
+        CLIFF_STOP_M (decided per fix in update())
+      - closure and boundary: hard warnings
+    Agents can't switch any of these off; the Route Planner's plan only supplies wording.
     """
-    zones = {z["id"]: z for z in hazard_map["zones"] if z.get("active", True)}
-    plan = (hazard_map.get("plans") or {}).get(ability)
-    if not hazard_map.get("complete") or not plan:
-        return {zid: "warning" for zid, z in zones.items() if ability in z.get("applies_to", [])}, "applies_to"
-
-    levels = {zid: "warning" for zid in plan.get("off_limits", []) if zid in zones}
-    careful = ability in ("beginner", "intermediate")
-    for reroute in plan.get("reroutes", []):
-        zid = reroute.get("zone_id")
-        if zid not in zones or zid in levels:
-            continue
-        if careful:
-            levels[zid] = "warning"
-        elif reroute.get("exit_id") is None:
-            levels[zid] = "heads_up"
-    if careful:
-        for zid, zone in zones.items():
-            if zone["type"] == "cliff":
-                levels.setdefault(zid, "warning")
-    return levels, "plan"
+    by_type = {"expert_terrain": "briefing", "cliff": "cliff", "closure": "warning", "boundary": "warning"}
+    levels = {z["id"]: by_type[z["type"]] for z in hazard_map["zones"]
+              if z.get("active", True) and z["type"] in by_type}
+    return levels, "zone type"
 
 
 class Geofence:
@@ -109,18 +99,21 @@ class Geofence:
         self.ability = ability
         levels, self.source = alert_levels(hazard_map, ability)
         self.zones = [
-            {**z, "level": levels[z["id"]], "ring": [to_xy(lat, lon) for lat, lon in z["polygon"]]}
+            {**z, "level": levels[z["id"]], "ring": [to_xy(lat, lon) for lat, lon in z["polygon"]],
+             "lines": [[to_xy(lat, lon) for lat, lon in line] for line in z.get("cliff_lines") or []]}
             for z in hazard_map["zones"]
             if z["id"] in levels
         ]
         self.fixes = deque(maxlen=config.GEOFENCE_SMOOTHING_FIXES)
-        self.streak = {}  # zone id -> consecutive fixes in warning range
-        self.warned = set()
+        self.streak = {}  # zone id -> consecutive fixes in range
+        self.sent = set()  # (zone id, level) already alerted
 
     def update(self, fix):
-        """fix: {t, lat, lon}. Returns new alerts (one per zone, first time only).
+        """fix: {t, lat, lon}. Returns new alerts.
 
-        Each alert has level "warning" or "heads_up" (a calm, one time notice).
+        level is "briefing" (entered expert terrain), "guidance" (cliff on trajectory) or
+        "warning" (closure or boundary, or a cliff from inside or within CLIFF_STOP_M).
+        Each (zone, level) alerts once; a cliff can go from guidance to warning.
         """
         x, y = to_xy(fix["lat"], fix["lon"])
         self.fixes.append((fix["t"], x, y))
@@ -129,28 +122,82 @@ class Geofence:
         else:
             position, speed, heading = (x, y), 0.0, None
 
+        cliff_hits = self._cliff_hits(position, speed, heading)
         warnings = []
         for zone in self.zones:
-            # Closures use a shorter look ahead and need a sustained heading (config.py).
-            warn_m = config.warning_distance_m(speed, zone["type"])
-            hit = self._check(zone, position, speed, heading, warn_m)
+            if zone["level"] == "cliff":
+                warn_m = config.warning_distance_m(speed, "cliff")
+                hit = cliff_hits.get(zone["id"])
+                confirm = config.confirm_fixes("cliff")
+            elif zone["level"] == "briefing":
+                # Briefings are for entering the zone, not approaching it.
+                warn_m = 0.0
+                inside_now = distance_to_ring(position, zone["ring"]) == 0
+                hit = {"reason": "entered", "distance_m": 0.0, "ahead_m": None} if inside_now else None
+                confirm = config.GEOFENCE_CONFIRM_FIXES
+            else:
+                # Closures use a shorter look ahead and need a sustained heading (config.py).
+                warn_m = config.warning_distance_m(speed, zone["type"])
+                hit = self._check(zone, position, speed, heading, warn_m)
+                confirm = config.confirm_fixes(zone["type"])
             self.streak[zone["id"]] = self.streak.get(zone["id"], 0) + 1 if hit else 0
-            if hit and zone["id"] not in self.warned and self.streak[zone["id"]] >= config.confirm_fixes(zone["type"]):
-                self.warned.add(zone["id"])
-                warnings.append({
-                    "t": fix["t"],
-                    "level": zone["level"],
-                    "zone_id": zone["id"],
-                    "zone_type": zone["type"],
-                    "zone_name": zone["name"],
-                    "reason": hit["reason"],
-                    "distance_m": round(hit["distance_m"], 1),
-                    "ahead_m": None if hit["ahead_m"] is None else round(hit["ahead_m"], 1),
-                    "speed_kmh": round(speed * 3.6, 1),
-                    "heading_deg": None if heading is None else round(heading),
-                    "warning_distance_m": round(warn_m, 1),
-                })
+            if not hit or self.streak[zone["id"]] < confirm:
+                continue
+            level = zone["level"]
+            if level == "cliff":
+                level = "warning" if hit["distance_m"] <= config.CLIFF_STOP_M else "guidance"
+            if (zone["id"], level) in self.sent or (level == "guidance" and (zone["id"], "warning") in self.sent):
+                continue
+            self.sent.add((zone["id"], level))
+            warnings.append({
+                "t": fix["t"],
+                "level": level,
+                "zone_id": zone["id"],
+                "zone_type": zone["type"],
+                "zone_name": zone["name"],
+                "reason": hit["reason"],
+                "distance_m": round(hit["distance_m"], 1),
+                "ahead_m": None if hit["ahead_m"] is None else round(hit["ahead_m"], 1),
+                "speed_kmh": round(speed * 3.6, 1),
+                "heading_deg": None if heading is None else round(heading),
+                "warning_distance_m": round(warn_m, 1),
+            })
         return warnings
+
+    def _cliff_hits(self, position, speed, heading):
+        """Cliffs the skier could go over: {zone id: hit}.
+
+        OSM draws cliffs with the drop on the right of the line's direction, so a cliff is
+        only a hazard from its high (left) side. A cliff alerts when the path ahead, within
+        the look ahead, crosses its line from high to low side (only the first one crossed),
+        or when the skier is on its high side within CLIFF_EDGE_M of the edge. Rays at
+        +-CLIFF_RAY_SPREAD_DEG around the heading catch a drift that turns hide.
+        """
+        warn_m = config.warning_distance_m(speed, "cliff")
+        hits, first = {}, None
+        moving = heading is not None and speed >= 0.5
+        # Turns swing the smoothed heading, so cast rays a few degrees either side of it.
+        ends = []
+        if moving:
+            for spread in (-config.CLIFF_RAY_SPREAD_DEG, 0, config.CLIFF_RAY_SPREAD_DEG):
+                angle = math.radians(heading + spread)
+                ends.append((position[0] + math.sin(angle) * warn_m, position[1] + math.cos(angle) * warn_m))
+        for zone in self.zones:
+            if zone["level"] != "cliff" or not zone["lines"]:
+                continue
+            edge, high_side = _edge_distance(position, zone["lines"])
+            if high_side and edge <= config.CLIFF_EDGE_M:
+                hits[zone["id"]] = {"reason": "at edge", "distance_m": distance_to_ring(position, zone["ring"]),
+                                    "ahead_m": None}
+            for end in ends:
+                ahead = _crossing_ahead(position, end, zone["lines"])
+                if ahead is not None and (first is None or ahead * warn_m < first[1]):
+                    first = (zone, ahead * warn_m)
+        if first and first[0]["id"] not in hits:
+            zone, ahead_m = first
+            hits[zone["id"]] = {"reason": "heading over", "distance_m": distance_to_ring(position, zone["ring"]),
+                                "ahead_m": ahead_m}
+        return hits
 
     def _check(self, zone, position, speed, heading, warn_m):
         distance = distance_to_ring(position, zone["ring"])
@@ -169,6 +216,42 @@ class Geofence:
                 return {"reason": "heading", "distance_m": distance, "ahead_m": step}
             step += PATH_STEP_M
         return None
+
+
+def _side(p, a, b):
+    """Positive when p is left of the direction a -> b."""
+    return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+
+
+def _edge_distance(p, lines):
+    """Distance to the nearest point of a cliff's lines, and whether p is on the high (left) side there."""
+    best, high = float("inf"), False
+    for line in lines:
+        for a, b in zip(line, line[1:]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length_sq = dx * dx + dy * dy
+            t = 0 if length_sq == 0 else max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length_sq))
+            d = math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1])
+            if d < best:
+                best, high = d, _side(p, a, b) > 0
+    return best, high
+
+
+def _crossing_ahead(start, end, lines):
+    """Fraction along start -> end where the path first goes over a cliff line (high to low side), or None."""
+    first = None
+    for line in lines:
+        for a, b in zip(line, line[1:]):
+            s1, s2 = _side(start, a, b), _side(end, a, b)
+            if not (s1 > 0 >= s2):  # must go from the high (left) side to the low side
+                continue
+            t1, t2 = _side(a, start, end), _side(b, start, end)
+            if t1 * t2 > 0:
+                continue
+            fraction = s1 / (s1 - s2)
+            if first is None or fraction < first:
+                first = fraction
+    return first
 
 
 def load_hazard_map():

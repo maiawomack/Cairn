@@ -1,0 +1,480 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8809898,
+      50.0985018
+     ],
+     [
+      -122.8807933,
+      50.0984054
+     ],
+     [
+      -122.8806261,
+      50.098357
+     ],
+     [
+      -122.8804644,
+      50.0983451
+     ],
+     [
+      -122.8803497,
+      50.0983626
+     ],
+     [
+      -122.8801259,
+      50.0984329
+     ],
+     [
+      -122.8800304,
+      50.0984664
+     ],
+     [
+      -122.8798762,
+      50.0985132
+     ],
+     [
+      -122.879468,
+      50.0986623
+     ],
+     [
+      -122.8793898,
+      50.0987282
+     ],
+     [
+      -122.8789419,
+      50.0991282
+     ],
+     [
+      -122.8788599,
+      50.0991859
+     ],
+     [
+      -122.87878,
+      50.099237
+     ],
+     [
+      -122.8786423,
+      50.0993155
+     ]
+    ]
+   },
+   "properties": {
+    "id": "garnet-bowl-right-line",
+    "name": "Garnet Bowl Right",
+    "bowl": "Garnet Bowl",
+    "osm_id": "way/907542959",
+    "difficulty": "expert",
+    "length_m": 216,
+    "descent_m": 43,
+    "clearance_m": 9,
+    "closest_hazard": "garnet-cliff-band-1",
+    "for_zones": [
+     "spankys-cliff-band-1",
+     "garnet-cliff-band-1",
+     "diamond-cliff-band-1"
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8809898,
+      50.0985018
+     ],
+     [
+      -122.8807549,
+      50.098554
+     ],
+     [
+      -122.8806363,
+      50.0986452
+     ],
+     [
+      -122.8805635,
+      50.0987408
+     ],
+     [
+      -122.8805554,
+      50.0989239
+     ],
+     [
+      -122.8805737,
+      50.0990417
+     ],
+     [
+      -122.8806352,
+      50.0992667
+     ],
+     [
+      -122.8806955,
+      50.099528
+     ],
+     [
+      -122.8807067,
+      50.0997243
+     ],
+     [
+      -122.8806948,
+      50.0999136
+     ],
+     [
+      -122.8806718,
+      50.1001023
+     ],
+     [
+      -122.8805423,
+      50.1009536
+     ],
+     [
+      -122.880372,
+      50.1017006
+     ]
+    ]
+   },
+   "properties": {
+    "id": "garnet-bowl-left-line",
+    "name": "Garnet Bowl Left",
+    "bowl": "Garnet Bowl",
+    "osm_id": "way/1167852432",
+    "difficulty": "expert",
+    "length_m": 375,
+    "descent_m": 98,
+    "clearance_m": 10,
+    "closest_hazard": "spankys-cliff-band-1",
+    "for_zones": [
+     "garnet-cliff-band-2",
+     "spankys-cliff-band-2"
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8803524,
+      50.1034651
+     ],
+     [
+      -122.8803248,
+      50.1036756
+     ],
+     [
+      -122.8802725,
+      50.1038641
+     ],
+     [
+      -122.8802019,
+      50.1040218
+     ],
+     [
+      -122.8801209,
+      50.1041523
+     ],
+     [
+      -122.8799947,
+      50.1043406
+     ]
+    ]
+   },
+   "properties": {
+    "id": "ruby-bowl-line",
+    "name": "Ruby Bowl",
+    "bowl": "Ruby Bowl",
+    "osm_id": "way/1167852431",
+    "difficulty": "expert",
+    "length_m": 102,
+    "descent_m": 73,
+    "clearance_m": 80,
+    "closest_hazard": "ruby-cliff-band-1",
+    "for_zones": []
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8830999,
+      50.1038332
+     ],
+     [
+      -122.8830431,
+      50.1039019
+     ],
+     [
+      -122.8829938,
+      50.1039584
+     ],
+     [
+      -122.8829385,
+      50.103996
+     ],
+     [
+      -122.8828635,
+      50.1040265
+     ],
+     [
+      -122.8826982,
+      50.1040594
+     ],
+     [
+      -122.8824954,
+      50.1040829
+     ],
+     [
+      -122.8822764,
+      50.1040966
+     ],
+     [
+      -122.8819473,
+      50.1041088
+     ],
+     [
+      -122.8816445,
+      50.1041024
+     ],
+     [
+      -122.8813935,
+      50.1041138
+     ],
+     [
+      -122.8811371,
+      50.1041354
+     ],
+     [
+      -122.8808501,
+      50.1041699
+     ],
+     [
+      -122.8805492,
+      50.1042195
+     ],
+     [
+      -122.8799947,
+      50.1043406
+     ]
+    ]
+   },
+   "properties": {
+    "id": "shredder-line",
+    "name": "Shredder",
+    "bowl": "Ruby Bowl",
+    "osm_id": "way/1167852435",
+    "difficulty": "expert",
+    "length_m": 237,
+    "descent_m": 134,
+    "clearance_m": 20,
+    "closest_hazard": "ruby-cliff-band-1",
+    "for_zones": [
+     "ruby-cliff-band-1"
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8835446,
+      50.1033749
+     ],
+     [
+      -122.8833722,
+      50.1034633
+     ],
+     [
+      -122.8831913,
+      50.1035117
+     ],
+     [
+      -122.8829709,
+      50.1035435
+     ],
+     [
+      -122.8827726,
+      50.1035477
+     ],
+     [
+      -122.8825176,
+      50.1035283
+     ],
+     [
+      -122.8823089,
+      50.1035267
+     ],
+     [
+      -122.8820655,
+      50.1035553
+     ],
+     [
+      -122.8818658,
+      50.1035977
+     ],
+     [
+      -122.8816415,
+      50.1036665
+     ],
+     [
+      -122.8813295,
+      50.1037885
+     ],
+     [
+      -122.8799947,
+      50.1043406
+     ]
+    ]
+   },
+   "properties": {
+    "id": "midway-rock-line",
+    "name": "Midway Rock",
+    "bowl": "Ruby Bowl",
+    "osm_id": "way/1167852436",
+    "difficulty": "expert",
+    "length_m": 283,
+    "descent_m": 152,
+    "clearance_m": 40,
+    "closest_hazard": "chimney-ladder-closure-1",
+    "for_zones": []
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8781882,
+      50.1012205
+     ],
+     [
+      -122.878033,
+      50.1012213
+     ],
+     [
+      -122.8778959,
+      50.1012007
+     ],
+     [
+      -122.877775,
+      50.1011696
+     ],
+     [
+      -122.8775626,
+      50.1010655
+     ],
+     [
+      -122.8774065,
+      50.1010214
+     ],
+     [
+      -122.8771879,
+      50.1010254
+     ],
+     [
+      -122.8769818,
+      50.1010735
+     ],
+     [
+      -122.8767632,
+      50.1011616
+     ],
+     [
+      -122.8765859,
+      50.101255
+     ]
+    ]
+   },
+   "properties": {
+    "id": "hobbs-right-line",
+    "name": "Hobbs (Right)",
+    "bowl": "Diamond Bowl",
+    "osm_id": "way/1167734549",
+    "difficulty": "expert",
+    "length_m": 128,
+    "descent_m": 67,
+    "clearance_m": 34,
+    "closest_hazard": "diamond-cliff-band-5",
+    "for_zones": [
+     "diamond-cliff-band-2",
+     "diamond-cliff-band-5"
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.877631,
+      50.1005083
+     ],
+     [
+      -122.877396,
+      50.1005709
+     ],
+     [
+      -122.8772129,
+      50.100637
+     ],
+     [
+      -122.8770576,
+      50.1007295
+     ],
+     [
+      -122.8769707,
+      50.1008024
+     ],
+     [
+      -122.8766375,
+      50.1011894
+     ],
+     [
+      -122.8765859,
+      50.101255
+     ],
+     [
+      -122.8762276,
+      50.1017109
+     ],
+     [
+      -122.876188,
+      50.1017613
+     ],
+     [
+      -122.8759698,
+      50.1020483
+     ]
+    ]
+   },
+   "properties": {
+    "id": "diamond-bowl-line",
+    "name": "Diamond Bowl",
+    "bowl": "Diamond Bowl",
+    "osm_id": "way/1168161542",
+    "difficulty": "expert",
+    "length_m": 215,
+    "descent_m": 144,
+    "clearance_m": 20,
+    "closest_hazard": "diamond-cliff-band-4",
+    "for_zones": [
+     "diamond-cliff-band-3",
+     "diamond-cliff-band-4"
+    ]
+   }
+  }
+ ]
+}

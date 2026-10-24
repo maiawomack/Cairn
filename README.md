@@ -9,7 +9,7 @@ Claude writes the words of each spoken warning (`backend/coordinator.py`). It ne
 In live testing (scenario 2, three runs on 2026-10-24), Claude returned short, fast lines but added directions that nothing it was given supported: "Turn left, stay on the traverse." and "Turn back uphill." No fact said which way was safe, and a guessed "left" could point a skier toward the cliff.
 
 Mitigations:
-- Claude now gets the zone's code-owned safe exit by name (for example "Rock Alley"), so it has a real place to send the skier.
+- Claude now gets a code-owned place to send the skier by name: for a cliff, the safe line through the bowl (for example "Garnet Bowl Right", from `data/safe_lines.geojson`); for a closure, its safe exit.
 - The prompt forbids directions that aren't in the facts.
 - Code rejects any line containing a direction word (left, right, uphill, downhill, back, across, straight, north, south, east, west) that doesn't appear in the facts Claude was given. A rejected line falls back to the Route Planner's spoken line, or a fixed template from the zone type and safe exit.
 

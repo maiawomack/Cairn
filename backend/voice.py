@@ -4,9 +4,9 @@ Audio streams from Cartesia to the backend and is relayed to the dashboard as it
 arrives (voice / chunk messages, base64 PCM), so speech starts before generation
 finishes and the API key never leaves the server.
 
-Style (CLAUDE.md): cliff warnings are firm and quick, reroutes are calm. A cliff
-warning line like "Stop now. Cliff ahead. Exit to Rock Alley." is pushed in two parts
-on one context: the alert sentences firm, the final reroute sentence calm.
+Style (CLAUDE.md): warnings are firm and quick, guidance is clear and confident,
+briefings are calm. A warning like "Stop now. Cliff band ahead. Move to the Garnet Bowl
+Left line." is pushed in two parts on one context: the alert firm, the final line calm.
 
 If Cartesia is not configured or fails, a voice / unavailable or error message tells
 the dashboard to speak the line with the browser's own speech, so a warning is never silent.
@@ -36,8 +36,14 @@ def _cartesia():
 
 
 def style_parts(line, zone_type, level):
-    """Split a line into (text, style) parts. Cliff warnings: alert firm, final reroute sentence calm."""
-    if zone_type != "cliff" or level != "warning":
+    """Split a line into (text, style) parts by alert level.
+
+    Warnings: the alert firm and quick, a final safe line or exit sentence calm.
+    Guidance: clear and confident. Briefings: calm.
+    """
+    if level == "guidance":
+        return [(line, "guide")]
+    if level != "warning":
         return [(line, "calm")]
     sentences = re.findall(r"[^.!?]+[.!?]*", line)
     sentences = [s.strip() for s in sentences if s.strip()]
