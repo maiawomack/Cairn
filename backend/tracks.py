@@ -313,6 +313,49 @@ def scenario_3(seed=13):
             "gps_burst": burst}
 
 
+def append_still(points, truth, seconds, seed):
+    """Stop dead where the track ends and stay there. GPS noise carries on from the last fix's
+    error, so the reported position wanders a few metres while the skier is perfectly still."""
+    rng = random.Random(seed + 5000)
+    true_xy = to_xy((truth[-1]["lon"], truth[-1]["lat"]))
+    last = to_xy((points[-1]["lon"], points[-1]["lat"]))
+    noise = [last[0] - true_xy[0], last[1] - true_xy[1]]
+    t0 = truth[-1]["t"]
+    for k in range(1, seconds + 1):
+        for axis in (0, 1):
+            noise[axis] = (GPS_CORRELATION * noise[axis]
+                           + math.sqrt(1 - GPS_CORRELATION ** 2) * rng.gauss(0, GPS_SIGMA_M))
+        lat, lon = to_latlon((true_xy[0] + noise[0], true_xy[1] + noise[1]))
+        points.append({"t": round(t0 + k, 1), "lat": lat, "lon": lon, "accuracy_m": GPS_ACCURACY_M})
+        true_lat, true_lon = to_latlon(true_xy)
+        truth.append({"t": round(t0 + k, 1), "lat": true_lat, "lon": true_lon, "speed_kmh": 0.0})
+
+
+# How long the skier stays still after the crash. The countdown is 30 s of real time, so the
+# track has to outlast it for the replay to show the whole check-in.
+STILL_AFTER_CRASH_S = 45
+
+
+def scenario_4(seed=14):
+    """Advanced skier on a fast, clean line down Garnet Bowl Left, then stops dead and stays still
+    (a fall, or a collision). The check-in asks, counts down, reminds, and escalates."""
+    track = scenario_1(seed=seed)
+    append_still(track["points"], track["truth"], STILL_AFTER_CRASH_S, seed)
+    return {**track, "id": "scenario_4",
+            "description": "Advanced skier on a fast line down Garnet Bowl Left stops dead and stays still",
+            "expected": "check-in question, 10 s reminder, then escalation to the simulated patrol console",
+            "target_zone": "garnet-bowl", "checkin": True}
+
+
+def scenario_4b(seed=14):
+    """Scenario 4, but the skier answers 'I'm okay' 12 s into the countdown: it cancels."""
+    track = scenario_4(seed=seed)
+    return {**track, "id": "scenario_4b",
+            "description": "Same stop as scenario 4; the skier says they're okay 12 s into the countdown",
+            "expected": "check-in question, then cancelled by 'I'm okay'; no escalation",
+            "reply": {"after_ask_s": 12, "said": "okay"}}
+
+
 def trim(track, start_s, end_s=None):
     """Keep fixes from start_s (to end_s), with times re-zeroed so the replay starts there."""
     def window(fixes):
@@ -334,7 +377,7 @@ def trim_for_demo(track):
 
 def main():
     TRACKS_DIR.mkdir(exist_ok=True)
-    for build in (scenario_1, scenario_2, scenario_3):
+    for build in (scenario_1, scenario_2, scenario_3, scenario_4, scenario_4b):
         track = trim_for_demo(build())
         path = TRACKS_DIR / f"{track['id']}.json"
         path.write_text(json.dumps(track, indent=1))

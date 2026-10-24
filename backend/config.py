@@ -117,7 +117,10 @@ VOICE_ENCODING = "pcm_s16le"
 # A short attention chime plays before the spoken audio. Warnings and guidance: the normal
 # chime; briefings: a softer one; confirmations ("You're on ..."): none. The dashboard
 # synthesizes the tones (frontend/app.js).
-VOICE_CHIME = {"warning": "normal", "guidance": "normal", "briefing": "soft", "on_line": None}
+VOICE_CHIME = {"warning": "normal", "guidance": "normal", "briefing": "soft", "on_line": None,
+               # crash check-in: the question, reminder and escalation get the chime; confirmations none
+               "checkin_ask": "normal", "checkin_reminder": "normal", "checkin_escalated": "normal",
+               "checkin_ok": None}
 
 # generation_config per style (Sonic treats these as guidance). speed 0.6-1.5, volume 0.5-2.0.
 VOICE_STYLES = {
@@ -125,3 +128,30 @@ VOICE_STYLES = {
     "guide": {"speed": 1.05, "volume": 1.25, "emotion": "confident"},  # cliff guidance: clear, not alarmed
     "calm": {"speed": 1.0, "volume": 1.1, "emotion": "calm"},  # briefings and the safe line after a warning
 }
+
+
+# ---- Crash check-in (CLAUDE.md "Crash check in flow") ----
+
+# Detector, on the smoothed speed of accepted GPS fixes only: a fast run, then a sudden stop,
+# then still. "Sudden": from the last fast fix to the first stopped fix within SUDDEN_DROP_S.
+# Speed comes from noisy GPS positions, so a perfectly still skier reads about 4 km/h (90th percentile
+# 8, 99th 11, max 14, measured over 40 simulated seeds). STOP_KMH 3 therefore never works; 10 detected
+# 38/40 crashes with 0/60 false triggers on the calm scenarios, 12 caught 40/40 with 1/60 false.
+FAST_KMH = _number("FAST_KMH", 25)
+STOP_KMH = _number("STOP_KMH", 10)
+SUDDEN_DROP_S = _number("SUDDEN_DROP_S", 3)
+STILL_S = _number("STILL_S", 4)
+# Back to normal skiing: at least NORMAL_KMH for this many fixes in a row cancels the countdown.
+NORMAL_KMH = _number("NORMAL_KMH", 15)  # above the still-skier noise
+NORMAL_FIXES = int(_number("NORMAL_FIXES", 3))
+# Countdown from the question until escalation, and the reminder when this many seconds are left.
+CHECKIN_COUNTDOWN_S = _number("CHECKIN_COUNTDOWN_SECONDS", 30)
+CHECKIN_REMINDER_S = _number("CHECKIN_REMINDER_SECONDS", 10)
+
+# Cartesia Managed Agent that listens for the reply. Blank = the mock path (scripted voice and
+# dashboard buttons). The agent's client tools, by name, and the only tool IDs it may have attached:
+# anything else (transfer, SMS, phone...) makes Cairn refuse to use the agent.
+CHECKIN_AGENT_ID = os.environ.get("CARTESIA_CHECKIN_AGENT_ID", "")
+CHECKIN_TOOL_OK = os.environ.get("CHECKIN_TOOL_OK") or "skier_ok"
+CHECKIN_TOOL_HELP = os.environ.get("CHECKIN_TOOL_HELP") or "request_help"
+CHECKIN_ALLOWED_TOOL_IDS = [t.strip() for t in os.environ.get("CHECKIN_ALLOWED_TOOL_IDS", "").split(",") if t.strip()]

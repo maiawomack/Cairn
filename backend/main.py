@@ -16,10 +16,16 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import checkin_agent
+import config
 import coordinator
+import crashcheck
 import geofence
+import incident
 import orchestrator
 import voice
+from datetime import datetime, timezone
+
 from events import hub
 from replay import load_track, replay
 
@@ -28,6 +34,80 @@ DEMO_DATE = "2026-02-22"
 
 # Coordinator tasks in flight (kept referenced so they aren't garbage collected).
 _speaking = set()
+
+# ---- Crash check-in (one at a time). Everything in here happens inside the event loop. ----
+# SIMULATED patrol: escalation only creates a record in the dashboard's patrol view.
+_checkin = {"machine": None, "incident": None, "stop": None, "hazard": None}
+
+
+def _checkin_active():
+    machine = _checkin["machine"]
+    return machine is not None and machine.state == "asking"
+
+
+def _spawn(coroutine):
+    task = asyncio.create_task(coroutine)
+    _speaking.add(task)
+    task.add_done_callback(_speaking.discard)
+
+
+async def _say(kind, level):
+    """A scripted check-in line: shown as the banner, then spoken (chime rules in config.VOICE_CHIME)."""
+    line = crashcheck.lines()[kind]
+    hub.publish("checkin", "say", {"line": line, "kind": kind, "level": level})
+    await voice.speak(line, "checkin", level, hub.publish)
+
+
+def _on_checkin_event(kind, data):
+    inc = _checkin["incident"]
+    hub.publish("checkin", kind, {**data, "incident": inc["id"]})
+    if kind == "ask":
+        _spawn(_say("ask", "checkin_ask"))
+    elif kind == "reminder":
+        _spawn(_say("reminder", "checkin_reminder"))
+    elif kind == "cancelled":
+        incident.update(inc, status="cancelled", skier_said=data["said"])
+        hub.publish("patrol", "incident_update", inc)
+        _spawn(_say("moving" if data["by"] == "moving" else "ok", "checkin_ok"))
+        _checkin["stop"].set()
+    elif kind == "escalated":
+        incident.update(inc, status="escalated", skier_said=data["said"])
+        hub.publish("patrol", "incident_update", inc)
+        _spawn(_say("escalated", "checkin_escalated"))
+        # The Incident Responder's report: cached or simulated, never a Creao run from here.
+        report, source = incident.report_for(inc, _checkin["hazard"], data["reason"])
+        incident.update(inc, report=report, report_source=source)
+        hub.publish("patrol", "incident_update", inc)
+        _checkin["stop"].set()
+
+
+async def _checkin_ticker(machine):
+    while machine.state == "asking":
+        machine.tick()
+        await asyncio.sleep(0.1)
+
+
+async def _scripted_reply(machine, after_s, said):
+    await asyncio.sleep(after_s)
+    machine.reply(said)
+
+
+def _start_checkin(crash, position, hazard, track):
+    if _checkin_active():
+        return
+    inc = incident.create(position, crash["peak_kmh"], hazard, datetime.now(timezone.utc).isoformat())
+    machine = crashcheck.CheckinMachine(_on_checkin_event)
+    _checkin.update(machine=machine, incident=inc, stop=asyncio.Event(), hazard=hazard)
+    hub.publish("patrol", "incident", inc)
+    machine.start({"mode": "agent" if checkin_agent.configured() else "mock", "peak_kmh": crash["peak_kmh"]})
+    _spawn(_checkin_ticker(machine))
+    reply = track.get("reply")
+    if reply:  # scenario 4b: the skier answers on cue
+        _spawn(_scripted_reply(machine, reply["after_ask_s"], reply["said"]))
+    if checkin_agent.configured():
+        _spawn(checkin_agent.run_session(lambda: machine.reply("okay"), lambda: machine.reply("help"),
+                                         _checkin["stop"], hub.publish))
+
 
 # Running replays: session id -> {"speed": chosen playback speed}.
 _replays = {}
@@ -74,6 +154,7 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         hub.publish("terrain", "no_hazard_map", {"error": "data/hazard_map.json missing; run agents first"})
 
     warning_times = [a["t"] for a in geofence.run_track(track, hazard)] if hazard else []
+    detector = crashcheck.CrashDetector()
     session_id = uuid.uuid4().hex[:8]
     session = _replays[session_id] = {"speed": speed}
 
@@ -100,6 +181,14 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         try:
             async for message in replay(track, speed_at):
                 alerts = fence.update(message["data"]) if fence else []
+                if fence and fence.speed_ms is not None and not fence.last_rejected:
+                    # Smoothed speed of accepted fixes only: the crash check-in's input.
+                    kmh = fence.speed_ms * 3.6
+                    if _checkin_active():
+                        _checkin["machine"].movement(kmh)
+                    crash = detector.update(message["data"]["t"], kmh)
+                    if crash:
+                        _start_checkin(crash, fence.smoothed, hazard, track)
                 if fence:
                     # The dashboard draws the skier on the smoothed track and the raw fix beside it.
                     message["data"]["smoothed"] = fence.smoothed
@@ -124,6 +213,29 @@ def set_replay_speed(session_id: str, speed: float = Query(..., gt=0, le=20)):
         raise HTTPException(404, "no such replay")
     _replays[session_id]["speed"] = speed
     return {"session": session_id, "speed": speed}
+
+
+@app.post("/api/checkin/reply")
+async def checkin_reply(said: str = Query(..., pattern="^(okay|help)$")):
+    """The skier's reply during a check-in: the dashboard's demo buttons call this."""
+    if not _checkin_active():
+        raise HTTPException(409, "no check-in is running")
+    _checkin["machine"].reply(said)
+    return {"said": said}
+
+
+@app.get("/api/patrol/incidents")
+def patrol_incidents():
+    """The simulated patrol console's incidents (this session only)."""
+    return incident.INCIDENTS
+
+
+@app.post("/api/incident/live-run")
+def incident_live_run():
+    """A live Incident Responder run on Creao would spend credits, so it is its own explicit action.
+    Not wired yet: it needs the agent's input fields (its config.yaml)."""
+    return JSONResponse({"status": "not_wired", "reason": "A live Creao Incident Responder run needs that agent's "
+                         "input fields (config.yaml); nothing was run and no credits were spent."}, status_code=501)
 
 
 @app.get("/api/events")

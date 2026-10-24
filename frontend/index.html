@@ -39,7 +39,9 @@
       background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 1px 6px;
     }
     .layer-toggle button.playing { border-color: var(--route); color: var(--route); }
-    .layer-toggle .replay-speed { margin-top: 4px; }
+    .layer-toggle .replay-speed, .layer-toggle .view-toggle { margin-top: 4px; }
+    .layer-toggle .replay { max-width: 260px; }
+    .layer-toggle .replay button { margin: 0 2px 3px 0; }
     .playback-speed { font-size: 11px; color: var(--hazard); margin-left: 4px; }
     .ignored-tag {
       pointer-events: none; padding: 2px 6px; border-radius: 3px; font-size: 11px;
@@ -156,6 +158,56 @@
     .org-legend .org-dot { display: inline-block; margin: 0 3px 0 10px; }
     .creao-dot { background: var(--route); }
     .code-dot { background: var(--code); }
+    /* Crash check-in ring, bottom right. */
+    .checkin {
+      position: absolute; right: 16px; bottom: 44px; z-index: 2; width: 210px; text-align: center;
+      background: rgba(243, 237, 224, 0.96); border: 1px solid var(--contour); border-radius: 8px;
+      padding: 12px 12px 14px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+    .checkin-ring { width: 150px; height: 150px; transform: rotate(-90deg); }
+    .ring-track { fill: none; stroke: rgba(59, 66, 80, 0.15); stroke-width: 10; }
+    .ring-fill { fill: none; stroke: var(--route); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 377; stroke-dashoffset: 0; }
+    .checkin.urgent .ring-fill { stroke: var(--hazard); }
+    .checkin-count { position: absolute; top: 48px; left: 0; right: 0; font-size: 54px; line-height: 1; font-family: Georgia, serif; }
+    .checkin-title { margin: 4px 0 8px; font-size: 17px; font-style: italic; }
+    .checkin-buttons { display: flex; flex-direction: column; gap: 5px; }
+    .checkin-buttons button {
+      font: inherit; font-size: 14px; color: var(--slate); cursor: pointer; background: #faf6ec;
+      border: 1px solid rgba(59, 66, 80, 0.4); border-radius: 4px; padding: 5px 8px;
+    }
+    .checkin-buttons button:hover { background: #fffaf0; }
+    .checkin.done .checkin-buttons { display: none; }
+
+    /* Patrol view: replaces the side panel and the org card. */
+    .patrol-panel {
+      display: none; position: absolute; right: 12px; top: 12px; bottom: 44px; width: 380px; z-index: 1; overflow-y: auto;
+      background: rgba(243, 237, 224, 0.96); border: 1px solid var(--contour); border-radius: 6px; padding: 10px 14px;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+    }
+    body.patrol .patrol-panel { display: block; }
+    body.patrol .org-card, body.patrol .agents-panel { display: none; }
+    .patrol-panel h2 { margin: 0; font-size: 18px; font-weight: normal; font-style: italic; }
+    .patrol-panel .simulated { margin: 4px 0 8px; padding: 3px 8px; font-size: 13px; color: #fff; background: var(--hazard); border-radius: 3px; display: inline-block; }
+    .patrol-panel header button {
+      display: block; font: inherit; font-size: 12.5px; color: var(--slate); cursor: pointer; background: transparent;
+      border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 2px 8px; margin-bottom: 8px;
+    }
+    .patrol-empty { font-style: italic; color: rgba(59, 66, 80, 0.8); }
+    .incident-card { background: #faf6ec; border: 1px solid var(--contour); border-left-width: 6px; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
+    .incident-card.countdown { border-left-color: var(--route); }
+    .incident-card.escalated { border-left-color: var(--hazard); }
+    .incident-card.cancelled { border-left-color: #4f7d4c; }
+    .incident-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .incident-card .chip { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .incident-card dl { margin: 6px 0 0; display: grid; grid-template-columns: 80px 1fr; gap: 2px 8px; }
+    .incident-card dt { color: rgba(59, 66, 80, 0.75); }
+    .incident-card dd { margin: 0; }
+    .incident-card pre { margin: 6px 0 0; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #f3ede0; padding: 6px 8px; border-radius: 3px; }
+    .incident-card .source { font-size: 12px; font-style: italic; color: rgba(59, 66, 80, 0.75); margin-top: 3px; }
+    .incident-pin { width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--route); background: var(--route); }
+    .incident-pin.escalated { background: var(--hazard); box-shadow: 0 0 0 2px var(--hazard); }
+    .incident-pin.cancelled { background: #4f7d4c; box-shadow: 0 0 0 2px #4f7d4c; }
+
     .agent-output {
       width: min(560px, calc(100% - 32px)); max-height: 70vh; border: 1px solid var(--contour); border-radius: 6px;
       background: var(--paper); color: var(--slate); padding: 12px 16px; font-family: Georgia, serif;
@@ -186,6 +238,31 @@
 <body>
   <div id="map"></div>
   <div id="spoken-banner" class="spoken-banner" hidden></div>
+
+  <!-- Crash check-in: a large countdown ring, with the demo reply buttons (no microphone this round). -->
+  <div id="checkin" class="checkin" hidden>
+    <svg viewBox="0 0 140 140" class="checkin-ring" aria-hidden="true">
+      <circle cx="70" cy="70" r="60" class="ring-track"/>
+      <circle cx="70" cy="70" r="60" class="ring-fill" id="ring-fill"/>
+    </svg>
+    <div class="checkin-count" id="checkin-count">30</div>
+    <div class="checkin-title" id="checkin-title">Are you okay?</div>
+    <div class="checkin-buttons">
+      <button type="button" data-said="okay">Skier says: I'm okay</button>
+      <button type="button" data-said="help">Skier says: help</button>
+    </div>
+  </div>
+
+  <!-- Patrol view: SIMULATED. Incident cards for this session; no real patrol or 911 is contacted. -->
+  <aside id="patrol-panel" class="patrol-panel" aria-label="Simulated patrol console">
+    <header>
+      <h2>Patrol console</h2>
+      <p class="simulated">Simulated: no real patrol is contacted</p>
+      <button type="button" id="incident-live-run" title="Runs the real Incident Responder on Creao (spends credits)">Live Incident Responder run</button>
+    </header>
+    <p id="patrol-empty" class="patrol-empty">No incidents this session.</p>
+    <div id="incident-cards"></div>
+  </aside>
   <div class="layer-toggle">
     <label><input type="checkbox" data-group="runs" checked> Runs</label>
     <label><input type="checkbox" data-group="lifts"> Lifts</label>
@@ -195,6 +272,14 @@
       Replay
       <button type="button" data-scenario="scenario_1">Scenario 1</button>
       <button type="button" data-scenario="scenario_2">Scenario 2</button>
+      <button type="button" data-scenario="scenario_3">Scenario 3</button>
+      <button type="button" data-scenario="scenario_4">Scenario 4</button>
+      <button type="button" data-scenario="scenario_4b">Scenario 4b</button>
+    </div>
+    <div class="view-toggle">
+      View
+      <button type="button" data-view="skier" class="playing">Skier</button>
+      <button type="button" data-view="patrol">Patrol</button>
     </div>
     <div class="replay-speed">
       Speed

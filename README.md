@@ -24,6 +24,18 @@ Every failure falls back to the Route Planner's line or the template, so somethi
 
 Each decision is logged on the dashboard with the path used (claude, route_planner, or template) and the reason.
 
+## What is real vs simulated
+
+| Real | Simulated |
+| --- | --- |
+| Hazard zones, runs and cliffs built from OpenStreetMap, elevations from AWS Terrain Tiles | GPS tracks: generated, with realistic speed and GPS noise (no on-snow GPS) |
+| The geofence, speed-scaled warning distances and GPS-burst rejection, run on those tracks | The skier's replies to the crash check-in: dashboard buttons (no microphone yet) |
+| Creao agents (Conditions Analyst, Terrain Scout, Route Planner): real runs, saved outputs | The Incident Responder's report: a template filled with the real incident facts, unless a saved Creao run exists |
+| Claude wording each spoken line, and Cartesia Sonic speaking it | **Ski patrol: the patrol console is a view in this app. No real patrol and no 911 is ever contacted.** |
+| The crash detector and the 30 s countdown with the 10 s reminder, timed exactly | The Cartesia Managed Agent listener: written to the docs, not yet run against a live agent |
+
+Cairn supplements signage and ski patrol and never replaces them.
+
 ## Known limitations
 
 - **A late, sharp turn toward a cliff gets a direct warning without guidance.** Guidance needs the skier's path to point over a cliff edge while they are still more than 15 m from its zone. If the turn toward the cliff comes later than that, the first alert is the "Stop now" warning. In testing (scenario 2, 20 random variants on 2026-10-24) this happened in 2 of 20 runs, still 12 s before the edge.
