@@ -193,6 +193,7 @@ REJOIN_AFTER_M = 25
 # Where on Garnet Bowl Right the drift starts (share of the line). Earlier starts give a longer
 # run-out but a shallower approach, and guidance then has under 12 s before the edge.
 DRIFT_STARTS_AT = 0.55
+EXIT_MARGIN_M = 4
 
 
 def scenario_2(seed=12, recover=True):
@@ -204,9 +205,11 @@ def scenario_2(seed=12, recover=True):
     garnet_right = below_ladder(osm_line(RUNS_FILE, "way/907542959"))  # drawn top to bottom in OSM
     # Like scenario 1, the run out ends where the line leaves Garnet Bowl: past that, the mapped
     # line points toward diamond-cliff-band-1, and guidance there is correct, not this scenario.
-    # 10 m short of that: the mapped line ends beside the north tip of garnet-cliff-band-1, and on the
-    # last fixes GPS noise swings the smoothed heading at it, re-arming guidance after the confirmation.
-    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length - 10
+    # Ends at the line's real east exit from the bowl (about 2,100 m), the same rule as scenarios 1
+    # and 3; Garnet Bowl Right is not made to go lower. Stops EXIT_MARGIN_M short, inside the GPS
+    # accuracy: the line ends beside the north tip of garnet-cliff-band-1, and from 2 m or less the
+    # last fixes point at it and (correctly) give guidance again after the confirmation.
+    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length - EXIT_MARGIN_M
     cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1, low side on its right
 
     on_line = Route(garnet_right)

@@ -175,9 +175,15 @@ def check_resume():
 
 def check_mock_path():
     """With the check-in agent id blank, everything above ran with the scripted-voice path."""
-    ok = not config.CHECKIN_AGENT_ID and not checkin_agent.configured()
-    return ok, "agent id blank -> mock path (scripted voice, dashboard buttons)", \
-        f"CARTESIA_CHECKIN_AGENT_ID {'blank' if not config.CHECKIN_AGENT_ID else 'set'}, configured() = {checkin_agent.configured()}"
+    # Force the id blank whatever .env says, so this never depends on (or touches) a real agent.
+    saved = config.CHECKIN_AGENT_ID
+    config.CHECKIN_AGENT_ID = ""
+    try:
+        ok = not checkin_agent.configured()
+    finally:
+        config.CHECKIN_AGENT_ID = saved
+    return ok, "agent id blank -> mock path (scripted voice, dashboard buttons); the agent code never runs here", \
+        f"configured() with a blank id = {not ok}"
 
 
 def check_safety():

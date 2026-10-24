@@ -41,8 +41,6 @@ const style = {
     runs: { type: "geojson", data: "/data/blackcomb_runs.geojson", attribution: OSM_ATTRIBUTION },
     // Built by build_hazard_zones.py from OSM cliffs and closures within 500 m of Spanky's.
     zones: { type: "geojson", data: "/data/hazard_zones.geojson" },
-    // Proposed by build_safe_exits.py, not yet reviewed.
-    exits: { type: "geojson", data: "/data/safe_exits.geojson" },
     skier: { type: "geojson", data: emptyCollection() },
     "skier-trail": { type: "geojson", data: emptyCollection() },
     "raw-gps": { type: "geojson", data: emptyCollection() },
@@ -173,7 +171,7 @@ const HAZARD_LAYERS = [
 
 const ROUTE_COLOR = "#5b3f8c";
 
-// Proposed safe exits, and the replayed skier: a dot with a fading trail of recent fixes.
+// The replayed skier: a dot with a fading trail of recent fixes (plus the safe line a cliff alert offers).
 // Added after the hazard layers so they draw on top.
 const TOP_LAYERS = [
   {
@@ -183,13 +181,6 @@ const TOP_LAYERS = [
     source: "zones",
     filter: ["==", ["get", "id"], ""],
     paint: { "line-color": HAZARD_COLOR, "line-width": 0, "line-opacity": 0.9 },
-  },
-  {
-    id: "exits",
-    type: "line",
-    source: "exits",
-    layout: { visibility: "none", "line-cap": "round" },
-    paint: { "line-color": ROUTE_COLOR, "line-width": 2.5, "line-opacity": 0.85 },
   },
   {
     // The line a cliff alert offered: dashed while offered, solid with a glow once the skier is on it.
@@ -261,7 +252,6 @@ const LAYER_GROUPS = {
   runs: ["runs", "runs-hover"],
   lifts: ["lifts", "lifts-hover"],
   hazards: HAZARD_LAYERS.map((layer) => layer.id),
-  exits: ["exits"],
 };
 
 function emptyCollection() {
@@ -712,7 +702,7 @@ function setOrgBox(role, state, runText) {
 
 function lastRunText(role) {
   const run = agentState[role].lastRun;
-  if (!run) return role === "incident" ? "no incidents" : "not run yet";
+  if (!run) return role === "incident" ? "standby" : "not run yet";
   if (run.run_id === "simulated") {
     return `simulated report · ${new Date(run.finished_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
   }
@@ -930,7 +920,6 @@ function drawCheckin() {
     const left = checkinLeft();
     document.getElementById("ring-fill").style.strokeDashoffset = String(RING_LENGTH * (1 - left / checkinRun.countdown));
     document.getElementById("checkin-count").textContent = String(Math.ceil(left));
-    for (const el of document.querySelectorAll(".incident-card.countdown .left")) el.textContent = `${Math.ceil(left)} s left`;
     requestAnimationFrame(drawCheckin);
   }
 }
@@ -980,10 +969,11 @@ const incidents = new Map(); // id -> incident
 const incidentPins = new Map(); // id -> maplibre marker
 
 function handlePatrol(message) {
+  // The server only publishes an incident when a check-in escalates; cancelled check-ins never get here.
   const incident = message.data;
   incidents.set(incident.id, incident);
   renderPatrol();
-  if (message.type === "incident_update" && incident.report) {
+  if (incident.report) {
     // The Incident Responder box reads "simulated report" with the report as its last output.
     agentState.incident = { lastRun: { run_id: "simulated", duration_s: 0, finished_at: new Date().toISOString() },
                             output: { incident: incident.id, source: incident.report_source, report: incident.report } };
@@ -1011,14 +1001,11 @@ function renderPatrol() {
                   Object.assign(document.createElement("span"), { className: "chip", textContent: incident.status }));
     const loc = incident.location;
     card.append(header, dl([
-      ["Status", incident.status === "countdown" ? "countdown" : incident.status],
+      ["Status", incident.status],
       ["Where", `${loc.area || "Glacier bowls"} (${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)})`],
       ["Last speed", `${incident.last_speed_kmh} km/h`],
       ["Skier said", incident.skier_said || "(waiting)"],
     ]));
-    if (incident.status === "countdown") {
-      card.querySelector("dd").append(" · ", Object.assign(document.createElement("span"), { className: "left" }));
-    }
     if (incident.report) {
       card.append(Object.assign(document.createElement("pre"), { textContent: incident.report }),
                   Object.assign(document.createElement("div"), { className: "source", textContent: `Report: ${incident.report_source}` }));

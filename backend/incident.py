@@ -24,7 +24,7 @@ CACHED_REPORT_FILE = Path(__file__).resolve().parent.parent / "data" / "incident
 NEARBY_HAZARD_M = 60
 NEAR_BOWL_M = 40
 
-INCIDENTS = []  # session only
+INCIDENTS = []  # escalated incidents only, this session only
 
 
 def _where(position, hazard_map):
@@ -46,10 +46,11 @@ def _where(position, hazard_map):
 
 
 def create(position, peak_kmh, hazard_map, started_at):
-    """A new incident at the start of a check-in (status: countdown)."""
+    """The facts of a check-in. Not an incident yet: it only becomes one, and only then appears
+    in the patrol console, if the check-in escalates (see register)."""
     area, nearby = _where(position, hazard_map)
     incident = {
-        "id": len(INCIDENTS) + 1,
+        "id": None,
         "started_at": started_at,
         "location": {"lat": position[0], "lon": position[1], "area": area, "nearby_hazards": nearby},
         "last_speed_kmh": peak_kmh,
@@ -58,6 +59,12 @@ def create(position, peak_kmh, hazard_map, started_at):
         "report": None,
         "simulated": True,
     }
+    return incident
+
+
+def register(incident):
+    """An escalated check-in becomes an incident in the patrol console (session only)."""
+    incident["id"] = len(INCIDENTS) + 1
     INCIDENTS.append(incident)
     return incident
 

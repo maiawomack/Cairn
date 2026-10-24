@@ -194,9 +194,7 @@
     }
     .patrol-empty { font-style: italic; color: rgba(59, 66, 80, 0.8); }
     .incident-card { background: #faf6ec; border: 1px solid var(--contour); border-left-width: 6px; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
-    .incident-card.countdown { border-left-color: var(--route); }
     .incident-card.escalated { border-left-color: var(--hazard); }
-    .incident-card.cancelled { border-left-color: #4f7d4c; }
     .incident-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
     .incident-card .chip { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
     .incident-card dl { margin: 6px 0 0; display: grid; grid-template-columns: 80px 1fr; gap: 2px 8px; }
@@ -204,9 +202,9 @@
     .incident-card dd { margin: 0; }
     .incident-card pre { margin: 6px 0 0; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #f3ede0; padding: 6px 8px; border-radius: 3px; }
     .incident-card .source { font-size: 12px; font-style: italic; color: rgba(59, 66, 80, 0.75); margin-top: 3px; }
-    .incident-pin { width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--route); background: var(--route); }
+    .incident-pin { display: none; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--route); background: var(--route); }
+    body.patrol .incident-pin { display: block; }
     .incident-pin.escalated { background: var(--hazard); box-shadow: 0 0 0 2px var(--hazard); }
-    .incident-pin.cancelled { background: #4f7d4c; box-shadow: 0 0 0 2px #4f7d4c; }
 
     .agent-output {
       width: min(560px, calc(100% - 32px)); max-height: 70vh; border: 1px solid var(--contour); border-radius: 6px;
@@ -260,14 +258,13 @@
       <p class="simulated">Simulated: no real patrol is contacted</p>
       <button type="button" id="incident-live-run" title="Runs the real Incident Responder on Creao (spends credits)">Live Incident Responder run</button>
     </header>
-    <p id="patrol-empty" class="patrol-empty">No incidents this session.</p>
+    <p id="patrol-empty" class="patrol-empty">No incidents. A check-in that escalates appears here.</p>
     <div id="incident-cards"></div>
   </aside>
   <div class="layer-toggle">
     <label><input type="checkbox" data-group="runs" checked> Runs</label>
     <label><input type="checkbox" data-group="lifts"> Lifts</label>
     <label><input type="checkbox" data-group="hazards" checked> Hazards</label>
-    <label><input type="checkbox" data-group="exits"> Safe exits (proposed)</label>
     <div class="replay">
       Replay
       <button type="button" data-scenario="scenario_1">Scenario 1</button>

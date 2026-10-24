@@ -8,8 +8,11 @@ by plain name, the same way the scripts do when run as python backend/x.py):
 
 import asyncio
 import json
+import logging
+import os
 import threading
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -60,24 +63,22 @@ async def _say(kind, level):
 
 def _on_checkin_event(kind, data):
     inc = _checkin["incident"]
-    hub.publish("checkin", kind, {**data, "incident": inc["id"]})
+    hub.publish("checkin", kind, data)
     if kind == "ask":
         _spawn(_say("ask", "checkin_ask"))
     elif kind == "reminder":
         _spawn(_say("reminder", "checkin_reminder"))
     elif kind == "cancelled":
-        incident.update(inc, status="cancelled", skier_said=data["said"])
-        hub.publish("patrol", "incident_update", inc)
+        # Not an incident: nothing goes to the patrol console, the ring just closes.
         _spawn(_say("moving" if data["by"] == "moving" else "ok", "checkin_ok"))
         _checkin["stop"].set()
     elif kind == "escalated":
-        incident.update(inc, status="escalated", skier_said=data["said"])
-        hub.publish("patrol", "incident_update", inc)
         _spawn(_say("escalated", "checkin_escalated"))
         # The Incident Responder's report: cached or simulated, never a Creao run from here.
         report, source = incident.report_for(inc, _checkin["hazard"], data["reason"])
-        incident.update(inc, report=report, report_source=source)
-        hub.publish("patrol", "incident_update", inc)
+        incident.update(inc, status="escalated", skier_said=data["said"], report=report, report_source=source)
+        incident.register(inc)
+        hub.publish("patrol", "incident", inc)  # the only patrol message: an escalation actually happened
         _checkin["stop"].set()
 
 
@@ -98,7 +99,6 @@ def _start_checkin(crash, position, hazard, track):
     inc = incident.create(position, crash["peak_kmh"], hazard, datetime.now(timezone.utc).isoformat())
     machine = crashcheck.CheckinMachine(_on_checkin_event)
     _checkin.update(machine=machine, incident=inc, stop=asyncio.Event(), hazard=hazard)
-    hub.publish("patrol", "incident", inc)
     machine.start({"mode": "agent" if checkin_agent.configured() else "mock", "peak_kmh": crash["peak_kmh"]})
     _spawn(_checkin_ticker(machine))
     reply = track.get("reply")
@@ -120,7 +120,26 @@ ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT / "frontend"
 DATA_DIR = ROOT / "data"
 
-app = FastAPI(title="Cairn")
+def voice_status():
+    """Where spoken audio will come from, from the environment (.env). Never includes a key or id."""
+    key, voice_id = bool(os.environ.get("CARTESIA_API_KEY")), bool(os.environ.get("CARTESIA_VOICE_ID"))
+    if key and voice_id:
+        mode, note = "sonic", f"voice: Cartesia Sonic ({config.CARTESIA_TTS_MODEL}), voice id from CARTESIA_VOICE_ID"
+    else:
+        missing = " and ".join(name for name, ok in (("CARTESIA_API_KEY", key), ("CARTESIA_VOICE_ID", voice_id)) if not ok)
+        mode, note = "browser_speech", f"voice: {missing} missing in .env -> browser speech fallback (no Sonic)"
+    return {"mode": mode, "model": config.CARTESIA_TTS_MODEL, "api_key_set": key, "voice_id_set": voice_id, "note": note}
+
+
+@asynccontextmanager
+async def lifespan(app):
+    status = voice_status()
+    log = logging.getLogger("uvicorn.error")
+    (log.info if status["mode"] == "sonic" else log.warning)(status["note"])
+    yield
+
+
+app = FastAPI(title="Cairn", lifespan=lifespan)
 
 # Map data is read from the cached GeoJSON files written by fetch_osm.py.
 app.mount("/data", StaticFiles(directory=DATA_DIR), name="data")
@@ -226,7 +245,7 @@ async def checkin_reply(said: str = Query(..., pattern="^(okay|help)$")):
 
 @app.get("/api/patrol/incidents")
 def patrol_incidents():
-    """The simulated patrol console's incidents (this session only)."""
+    """The simulated patrol console's incidents: escalated check-ins only, this session only."""
     return incident.INCIDENTS
 
 
@@ -236,6 +255,17 @@ def incident_live_run():
     Not wired yet: it needs the agent's input fields (its config.yaml)."""
     return JSONResponse({"status": "not_wired", "reason": "A live Creao Incident Responder run needs that agent's "
                          "input fields (config.yaml); nothing was run and no credits were spent."}, status_code=501)
+
+
+@app.get("/api/health")
+def health():
+    """What is configured, as booleans and model names only (no keys, no ids)."""
+    return {
+        "voice": voice_status(),
+        "claude": {"api_key_set": bool(os.environ.get("ANTHROPIC_API_KEY")), "model": config.CLAUDE_MODEL},
+        "checkin_agent": {"mode": "agent" if checkin_agent.configured() else "mock"},
+        "hazard_map": {"present": geofence.HAZARD_MAP_FILE.exists()},
+    }
 
 
 @app.get("/api/events")

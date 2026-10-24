@@ -143,7 +143,7 @@ Geofence (`backend/geofence.py`, tuning in `backend/config.py`): a least squares
 
 Coordinator (`backend/coordinator.py`): on each alert, Claude (`CLAUDE_MODEL`, default `claude-haiku-5-5`, effort low, thinking off, no retries) gets facts for the alert level and returns one spoken line: a `briefing` (at most 30 words: conditions and up to two main hazards of the area), `guidance` (the hazard and the safe line from `safe_lines.geojson`, never "stop"), or a `warning` (may say "Stop now", under 15 words). A line is rejected if it is too long, says "stop" outside a warning, names or knows a safe line without offering it ("move to", "take"...), or uses a direction word (left, right, uphill, back, ...) that isn't in its facts. If Claude hasn't answered in 1.5 s, errors, refuses, or its line is rejected, the Route Planner's line is used if it passes the same checks, otherwise a fixed template. Every decision is posted to the dashboard log as `coordinator` / `decision` with `path` (claude | route_planner | template) and `claude_reason`.
 
-Voice (`backend/voice.py`): the coordinator's line streams through Sonic (`sonic-3.6`, cartesia SDK 4.2.0, `cartesia-version` header) over the WebSocket TTS API as raw `pcm_s16le` at 24 kHz, relayed to the dashboard as `voice` / `chunk` messages (live only, not kept in the log history) and played gaplessly with Web Audio. Warnings: the alert firm and quick (`determined`, speed 1.2, volume 1.4), the final safe line or exit sentence calm. Guidance: clear and confident (`confident`, speed 1.05, volume 1.25). Briefings: calm. A short attention chime plays before the speech (`config.VOICE_CHIME`, synthesized in the browser, sent as `chime` on each voice message): warnings and guidance get the normal chime, briefings a softer one, confirmations ("You're on ...") none. Styles live in `config.VOICE_STYLES`. If Cartesia is not configured or errors, the dashboard speaks the line with the browser's speech synthesis, so a warning is never silent. The banner on the map shows the exact words from the coordinator decision.
+Voice (`backend/voice.py`): the voice id, model and API version come from `.env` (`CARTESIA_VOICE_ID`, `CARTESIA_TTS_MODEL`, `CARTESIA_VERSION`), never hard-coded; startup logs one `voice:` line (a warning when the key or id is missing) and `GET /api/health` reports it. The coordinator's line streams through Sonic (`sonic-3.6`, cartesia SDK 4.2.0, `cartesia-version` header) over the WebSocket TTS API as raw `pcm_s16le` at 24 kHz, relayed to the dashboard as `voice` / `chunk` messages (live only, not kept in the log history) and played gaplessly with Web Audio. Warnings: the alert firm and quick (`determined`, speed 1.2, volume 1.4), the final safe line or exit sentence calm. Guidance: clear and confident (`confident`, speed 1.05, volume 1.25). Briefings: calm. A short attention chime plays before the speech (`config.VOICE_CHIME`, synthesized in the browser, sent as `chime` on each voice message): warnings and guidance get the normal chime, briefings a softer one, confirmations ("You're on ...") none. Styles live in `config.VOICE_STYLES`. If Cartesia is not configured or errors, the dashboard speaks the line with the browser's speech synthesis, so a warning is never silent. The banner on the map shows the exact words from the coordinator decision.
 
 Safe lines (`backend/build_safe_lines.py`, `data/safe_lines.geojson`): OSM downhill runs mostly inside a Glacier bowl that cross no cliff line and stay 5 m clear of every cliff and closure zone. Each cliff gets the nearest safe line in a bowl that borders it; guidance names it. These replace exits like Rock Alley for cliffs. They are proposals: review them before relying on them.
 
@@ -172,8 +172,8 @@ Keep the 30 and 10 second values in config. This voice filter is the pitch: unli
 
 A second view on the same dashboard, toggled with a "Skier view / Patrol view" switch, fed by the same backend stream. Clearly labeled "Simulated: no real patrol is contacted."
 
-- Map of the area with incident pins and active countdowns
-- Incident cards: time, location, last speed, what the skier said (or "no response"), the Incident Responder's report, status (countdown, cancelled, escalated)
+- Map of the area with incident pins. Incidents appear here only after a check-in escalates (a cancelled check-in never does); during a countdown the Skier view shows the ring. Pins and cards are hidden in the Skier view. No sample or placeholder incidents.
+- Incident cards: time, location, last speed, what the skier said (or "no response"), the Incident Responder's report (cached or simulated), status escalated
 - Near misses: skiers who got a cliff warning, as small markers
 
 Keep it to one panel and one list. No auth, no history beyond the current session.
@@ -192,7 +192,7 @@ Vibe: a painted panoramic trail map. The terrain is the star; routes are thin an
 - Data: all features are clipped to the fetch box in `fetch_osm.py`. The box itself is not drawn.
 - One clear marker for Spanky's Ladder. No other labels by default.
 - A small layer toggle (runs, lifts, hazards) in a corner.
-- Routes: the skier's track and safe exits as clean purple lines with small direction arrows, like hiking map routes.
+- Routes: the skier's track and the safe line a cliff alert offers as clean purple lines with small direction arrows, like hiking map routes. The proposed safe exits layer was removed from the view (the data stays for closures' wording).
 - Skier: a small dot with a fading trail of recent positions.
 - Type: a crisp serif for map labels and headings, monospace for the agent log.
 - Agent log as a field notebook: side panel on the same paper, one entry per message, small icon per agent, timestamp, short text.
