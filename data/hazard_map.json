@@ -1,5 +1,6 @@
 {
- "generated_at": "2026-10-24T06:59:12.122034+00:00",
+ "generated_at": "2026-10-24T16:29:02.591177+00:00",
+ "complete": false,
  "date": "2026-02-22",
  "creao_run_link": null,
  "creao_runs": [
@@ -82,7 +83,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Expert entrance. 22.3 cm new snow, unrated danger today.",
+   "hint": "Spanky's Ladder entrance: unrated danger, 22 cm new snow, gusts 52.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -627,7 +628,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Permanently closed. Do not enter.",
+   "hint": "Permanently closed beside Spanky's Ladder toward Showcase Bowl. Do not enter.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -688,7 +689,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Permanently closed. Do not enter.",
+   "hint": "Permanently closed by Chimney Ladder and the Grey Zone. Do not enter.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -809,7 +810,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band at Spanky's entrance and Ruby Bowl Traverse. Stay clear.",
+   "hint": "Spanky's entrance cliff band, active. High severity for all levels.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -926,7 +927,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band in Garnet Bowl Center. Stay clear.",
+   "hint": "Garnet Bowl Center cliff band, active. High severity for all levels.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1043,7 +1044,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Wild Thing and Diamond Centre. Stay clear.",
+   "hint": "Cliff band between Wild Thing and Diamond Centre. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1192,7 +1193,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Stay clear.",
+   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Active, high.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1293,7 +1294,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Long cliff band through Ruby Bowl. Stay clear.",
+   "hint": "Long Ruby Bowl cliff band. Active, high severity for all levels.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1534,7 +1535,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band beside Wild Thing. Stay clear.",
+   "hint": "Cliff band beside Wild Thing. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1659,7 +1660,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl. Stay clear.",
+   "hint": "Cliff at Helter Skelter entrance to Diamond Bowl. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1760,7 +1761,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes. Stay clear.",
+   "hint": "Sapphire Chutes cliff band in Sapphire Bowl. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -1909,7 +1910,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder. Stay clear.",
+   "hint": "Cliff band between Spanky's Chute and Shoulder. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -2070,7 +2071,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band near Zut Zut. Stay clear.",
+   "hint": "Cliff band near Zut Zut. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -2219,7 +2220,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band along the Bad Attitude Traverse. Stay clear.",
+   "hint": "Cliff band along the Bad Attitude Traverse. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -2360,7 +2361,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Stay clear.",
+   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Active, high severity.",
    "annotated_by": "terrain_scout",
    "polygon": [
     [
@@ -2702,6 +2703,5 @@
    "reroutes": []
   }
  },
- "notes_for_incident_responder": null,
- "complete": false
+ "notes_for_incident_responder": null
 }
