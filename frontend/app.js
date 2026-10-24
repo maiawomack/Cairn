@@ -4,9 +4,6 @@ import * as maplibregl from "maplibre-gl";
 // [lon, lat], midpoint of OSM way 461517641.
 const SPANKYS_LADDER = [-122.8811, 50.0977];
 
-// Only show OSM hazards this close to Spanky's Ladder (dist_to_spankys_m is set by fetch_osm.py).
-const HAZARD_RADIUS_M = 500;
-
 // AWS Terrain Tiles (Tilezen). Free, no key. Attribution lines below are the
 // ones that apply to Whistler from https://github.com/tilezen/joerd/blob/master/docs/attribution.md
 const DEM_SOURCE = {
@@ -39,7 +36,8 @@ const style = {
     "dem-terrain": DEM_SOURCE,
     "dem-shade": DEM_SOURCE,
     runs: { type: "geojson", data: "/data/blackcomb_runs.geojson", attribution: OSM_ATTRIBUTION },
-    hazards: { type: "geojson", data: "/data/osm_hazards.geojson" },
+    // Built by build_hazard_zones.py from OSM cliffs and closures within 500 m of Spanky's.
+    zones: { type: "geojson", data: "/data/hazard_zones.geojson" },
   },
   terrain: { source: "dem-terrain", exaggeration: 1.3 },
   sky: {
@@ -122,49 +120,49 @@ const style = {
   ],
 };
 
+const HAZARD_COLOR = "#b23a3a";
+const EXPERT_COLOR = "#2f2f33";
+
+// Hazard zones by type: red hatching for cliffs and closures, dark hatching for
+// expert terrain, orange dashed line for a boundary.
 const HAZARD_LAYERS = [
   {
-    // Closed areas, plus the one OSM cliff that is mapped as an area.
-    id: "hazard-area-hatch",
+    id: "zone-hatch",
     type: "fill",
-    source: "hazards",
-    filter: hazardFilter(null, "Polygon"),
+    source: "zones",
+    filter: ["in", ["get", "type"], ["literal", ["cliff", "closure"]]],
     paint: { "fill-pattern": "hatch" },
   },
   {
-    id: "hazard-outline",
-    type: "line",
-    source: "hazards",
-    filter: hazardFilter(null, "Polygon"),
-    paint: { "line-color": "#b23a3a", "line-width": 1, "line-opacity": 0.5 },
+    id: "expert-hatch",
+    type: "fill",
+    source: "zones",
+    filter: ["==", ["get", "type"], "expert_terrain"],
+    paint: { "fill-pattern": "hatch-expert" },
   },
   {
-    id: "cliff-hatch",
+    id: "zone-outline",
     type: "line",
-    source: "hazards",
-    filter: hazardFilter("cliff", "LineString"),
-    paint: { "line-pattern": "hatch", "line-width": 8 },
+    source: "zones",
+    filter: ["!=", ["get", "type"], "boundary"],
+    paint: {
+      "line-color": ["match", ["get", "type"], "expert_terrain", EXPERT_COLOR, HAZARD_COLOR],
+      "line-width": 1,
+      "line-opacity": 0.55,
+    },
   },
   {
-    id: "cliff-line",
+    id: "boundary-line",
     type: "line",
-    source: "hazards",
-    filter: hazardFilter("cliff", "LineString"),
-    paint: { "line-color": "#b23a3a", "line-width": 0.8, "line-opacity": 0.6 },
+    source: "zones",
+    filter: ["==", ["get", "type"], "boundary"],
+    paint: { "line-color": "#e07b00", "line-width": 2, "line-dasharray": [4, 3] },
   },
 ];
 
-// Cliffs and closed areas near Spanky's. Ski area boundary is left out.
-// geometry-type is "LineString" for both LineString and MultiLineString.
-function hazardFilter(kind, geometryType) {
-  const filter = [
-    "all",
-    ["<=", ["get", "dist_to_spankys_m"], HAZARD_RADIUS_M],
-    kind ? ["==", ["get", "kind"], kind] : ["in", ["get", "kind"], ["literal", ["cliff", "closed"]]],
-  ];
-  if (geometryType) filter.push(["==", ["geometry-type"], geometryType]);
-  return filter;
-}
+// Layers whose features show a label on hover, zones first so they win over runs.
+const ZONE_HOVER_LAYERS = ["zone-hatch", "expert-hatch"];
+const HOVER_LAYERS = [...ZONE_HOVER_LAYERS, "runs-hover", "lifts-hover"];
 
 const LAYER_GROUPS = {
   runs: ["runs", "runs-hover"],
@@ -187,13 +185,13 @@ const map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-// Soft red diagonal hatching, drawn once on a canvas and used as a fill and line pattern.
-function hatchImage() {
+// Soft diagonal hatching, drawn once on a canvas and used as a fill pattern.
+function hatchImage(color) {
   const size = 12;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = "rgba(178, 58, 58, 0.55)";
+  ctx.strokeStyle = color;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   // Three strokes so the diagonal continues across tile edges.
@@ -207,7 +205,8 @@ function hatchImage() {
 
 // style.load, not load: load waits for every terrain tile, which can take a while.
 map.on("style.load", () => {
-  map.addImage("hatch", hatchImage());
+  map.addImage("hatch", hatchImage("rgba(178, 58, 58, 0.55)"));
+  map.addImage("hatch-expert", hatchImage("rgba(47, 47, 51, 0.45)"));
   for (const layer of HAZARD_LAYERS) {
     map.addLayer(layer, "runs-hover");
   }
@@ -224,20 +223,35 @@ function spankysMarker() {
   return el;
 }
 
-// Run and lift names on hover only.
-const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "run-name", offset: 8 });
+// Zone ids and run or lift names on hover only.
+const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "hover-label", offset: 8 });
 
-for (const layer of ["runs-hover", "lifts-hover"]) {
-  map.on("mousemove", layer, (event) => {
-    const name = event.features[0].properties.name;
-    if (!name) return hoverPopup.remove();
-    map.getCanvas().style.cursor = "pointer";
-    hoverPopup.setLngLat(event.lngLat).setText(name).addTo(map);
-  });
-  map.on("mouseleave", layer, () => {
+map.on("mousemove", (event) => {
+  const layers = HOVER_LAYERS.filter((id) => map.getLayer(id));
+  const features = map.queryRenderedFeatures(event.point, { layers });
+  const zone = features.find((f) => ZONE_HOVER_LAYERS.includes(f.layer.id));
+  const named = zone || features.find((f) => f.properties.name);
+  if (!named) {
     map.getCanvas().style.cursor = "";
     hoverPopup.remove();
-  });
+    return;
+  }
+  map.getCanvas().style.cursor = "pointer";
+  hoverPopup.setLngLat(event.lngLat).setDOMContent(hoverLabel(named, Boolean(zone))).addTo(map);
+});
+
+function hoverLabel(feature, isZone) {
+  const el = document.createElement("div");
+  if (isZone) {
+    const id = document.createElement("b");
+    id.textContent = feature.properties.id;
+    const name = document.createElement("div");
+    name.textContent = feature.properties.name;
+    el.append(id, name);
+  } else {
+    el.textContent = feature.properties.name;
+  }
+  return el;
 }
 
 for (const checkbox of document.querySelectorAll(".layer-toggle input")) {
