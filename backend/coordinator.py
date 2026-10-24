@@ -15,6 +15,7 @@ the skier is close to the zone, and an alert is always spoken, whatever Claude d
 import asyncio
 import json
 import os
+import re
 import time
 
 import anthropic
@@ -28,8 +29,10 @@ Rules:
 - Aim for 6 to 10 words; never 15 or more. Short lines are spoken sooner.
 - Plain spoken words. No lists, markup, quotes or emoji. Leave out numbers unless they matter.
 - Lead with what to do now.
-- If a safe exit is given, send the skier to it by its name. Only use directions, run names \
-and distances that appear in the facts; never invent them.
+- If a safe exit is given, send the skier to it by its name.
+- Never give a direction (left, right, uphill, downhill, back, across) unless that word appears \
+in the facts. A wrong direction can send a skier toward the hazard. Use only run names and \
+distances that appear in the facts.
 - Never say or suggest that the hazard is not there or not dangerous.
 - level "warning": firm and urgent. level "heads_up": calm and informational, no alarm.
 - If the avalanche rating is unknown, you may urge caution, but never state a rating.
@@ -70,24 +73,38 @@ def template_line(alert, reroute, hazard_map):
     if alert["level"] == "heads_up":
         return f"Heads up, {hazard} ahead."
     line = f"Stop now. {hazard.capitalize()} ahead."
-    exit_name = (reroute or {}).get("exit_name") or next(
-        (e["name"] for e in hazard_map.get("safe_exits", []) if e["from_zone"] == alert["zone_id"]), None)
+    exit_name = safe_exit_name(hazard_map, alert["zone_id"], reroute)
     if exit_name:
         line += f" {exit_name}."
     return line
 
 
-def facts_for(alert, zone, reroute, ability, avalanche_known):
+def safe_exit_name(hazard_map, zone_id, reroute):
+    """The plan's exit for this zone, else the zone's own code-owned safe exit, else None."""
+    if reroute and reroute.get("exit_name"):
+        return reroute["exit_name"]
+    return next((e["name"] for e in hazard_map.get("safe_exits", []) if e["from_zone"] == zone_id), None)
+
+
+# Words that point the skier somewhere. Claude may only use one if it appears in the facts.
+DIRECTION_WORDS = {"left", "right", "uphill", "downhill", "back", "across", "straight",
+                   "north", "south", "east", "west"}
+
+
+def invented_directions(line, facts):
+    facts_words = set(re.findall(r"[a-z]+", json.dumps(facts).lower()))
+    return sorted(w for w in set(re.findall(r"[a-z]+", line.lower())) if w in DIRECTION_WORDS - facts_words)
+
+
+def facts_for(alert, zone, reroute, ability, avalanche_known, exit_name):
     return {
+        "safe_exit": exit_name,
         "level": alert["level"],
         "skier_ability": ability,
         "zone": {"type": zone["type"], "name": zone["name"], "hint": zone.get("hint")},
         "distance_m": alert["distance_m"],
         "speed_kmh": alert["speed_kmh"],
-        "route_planner": None if reroute is None else {
-            "safe_exit": reroute.get("exit_name"),
-            "spoken": reroute.get("spoken"),
-        },
+        "route_planner_line": None if reroute is None else reroute.get("spoken"),
         "avalanche_rating": "known" if avalanche_known else "unknown for today",
     }
 
@@ -128,6 +145,9 @@ async def ask_claude(facts):
     line = text.splitlines()[0].strip()
     if len(line.split()) >= config.COORDINATOR_MAX_WORDS:  # "under 15 words"
         return None, f"too long ({len(line.split())} words): {line}", ms
+    invented = invented_directions(line, facts)
+    if invented:
+        return None, f"direction not in the facts ({', '.join(invented)}): {line}", ms
     return line, "ok", ms
 
 
@@ -141,7 +161,8 @@ async def decide(alert, hazard_map, ability):
     reroute = reroute_for(hazard_map, ability, alert["zone_id"])
     avalanche = (hazard_map.get("conditions") or {}).get("avalanche") or {}
     avalanche_known = any(avalanche.get(k) is not None for k in ("alpine", "treeline", "below_treeline"))
-    facts = facts_for(alert, zone, reroute, ability, avalanche_known)
+    exit_name = safe_exit_name(hazard_map, alert["zone_id"], reroute)
+    facts = facts_for(alert, zone, reroute, ability, avalanche_known, exit_name)
 
     if os.environ.get("ANTHROPIC_API_KEY"):
         claude_line, reason, claude_ms = await ask_claude(facts)
