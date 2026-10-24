@@ -16,21 +16,11 @@ import geofence
 import tracks
 from geofence import to_xy
 
-GUIDANCE_LEAD_S = 12  # scenario 2: guidance at least this long before the skier reaches the edge
+GUIDANCE_LEAD_S = 12  # scenario 2: guidance at least this long before the edge, had the skier kept drifting
 
 
 def summary(alerts):
     return [(a["t"], a["level"], a["zone_id"]) for a in alerts]
-
-
-def edge_reached_t(track, zone):
-    """When the true track first comes within 3 m of the zone's cliff line."""
-    lines = [[to_xy(lat, lon) for lat, lon in line] for line in zone["cliff_lines"]]
-    for p in track["truth"]:
-        q = to_xy(p["lat"], p["lon"])
-        if geofence._edge_distance(q, lines)[0] < 3:
-            return p["t"]
-    return None
 
 
 def only_briefing(track, alerts, hazard_map):
@@ -39,26 +29,43 @@ def only_briefing(track, alerts, hazard_map):
     return ok, "only the Garnet Bowl briefing", ", ".join(f"{level} {zone} at {t:.0f} s" for t, level, zone in summary(alerts)) or "nothing"
 
 
-def guidance_in_time(track, alerts, hazard_map):
+def guidance_then_recovery(track, alerts, hazard_map):
+    """Scenario 2: briefing; the first alert for the target cliff is guidance at least
+    GUIDANCE_LEAD_S before they'd reach the edge if they kept drifting; "You're on Garnet Bowl Right"
+    after it; the skier never enters the cliff zone; no alerts for any other zone."""
     target = next(z for z in hazard_map["zones"] if z["id"] == "garnet-cliff-band-1")
-    edge_t = edge_reached_t(track, target)
+    lines = [[to_xy(lat, lon) for lat, lon in line] for line in target["cliff_lines"]]
+    truth = {p["t"]: p for p in track["truth"]}
     levels = [(level, zone) for _, level, zone in summary(alerts)]
-    guidance = next((a for a in alerts if a["zone_id"] == target["id"] and a["level"] == "guidance"), None)
     first_target = next((a for a in alerts if a["zone_id"] == target["id"]), None)
-    lead = None if guidance is None or edge_t is None else edge_t - guidance["t"]
-    ok = (bool(levels) and levels[0] == ("briefing", "garnet-bowl") and guidance is not None
-          and first_target is guidance and lead is not None and lead >= GUIDANCE_LEAD_S)
+    lead = None
+    if first_target and first_target["level"] == "guidance":
+        # How long the guidance left before the edge had the skier kept drifting: the same
+        # track without the recovery (identical up to the turn) shows when they'd reach it.
+        drifting = tracks.scenario_2(seed=track["seed"], recover=False)
+        reach = next((p["t"] for p in drifting["truth"]
+                      if geofence._edge_distance(to_xy(p["lat"], p["lon"]), lines)[0] < 3), None)
+        lead = None if reach is None else reach - first_target["t"]
+    on_line = next((a for a in alerts if a["level"] == "on_line"), None)
+    closest = min(geofence._edge_distance(to_xy(p["lat"], p["lon"]), lines)[0] for p in track["truth"])
     extra = sorted({zone for _, zone in levels} - {"garnet-bowl", target["id"]})
-    actual = (f"guidance {lead:.0f} s before the edge" if lead is not None else
-              f"no guidance first (first target alert: {first_target['level'] if first_target else 'none'})")
+    ok = (bool(levels) and levels[0] == ("briefing", "garnet-bowl") and lead is not None and lead >= GUIDANCE_LEAD_S
+          and on_line is not None and on_line["line_name"] == "Garnet Bowl Right" and on_line["t"] > first_target["t"]
+          and closest > 20 and not extra)
+    parts = [f"guidance {lead:.0f} s before the edge" if lead is not None else
+             f"first target alert: {first_target['level'] if first_target else 'none'}"]
+    parts.append(f"on Garnet Bowl Right at {on_line['t']:.0f} s" if on_line else "never confirmed on the line")
+    parts.append(f"closest to the edge {closest:.0f} m")
     if extra:
-        actual += f"; also alerted: {', '.join(extra)}"
-    return ok, f"briefing, then guidance for garnet-cliff-band-1 at least {GUIDANCE_LEAD_S} s before the edge", actual
+        parts.append(f"also alerted: {', '.join(extra)}")
+    expected = (f"briefing, guidance at least {GUIDANCE_LEAD_S} s before the edge, then on Garnet Bowl Right; "
+                "never inside the cliff zone; no other zones")
+    return ok, expected, "; ".join(parts)
 
 
 SCENARIOS = [
     ("scenario_1", tracks.scenario_1, only_briefing),
-    ("scenario_2", tracks.scenario_2, guidance_in_time),
+    ("scenario_2", tracks.scenario_2, guidance_then_recovery),
     ("scenario_3", tracks.scenario_3, only_briefing),
 ]
 SEED_BASE = {"scenario_1": 200, "scenario_2": 300, "scenario_3": 100}

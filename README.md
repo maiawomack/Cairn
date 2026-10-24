@@ -23,3 +23,7 @@ Every failure falls back to the Route Planner's line or the template, so somethi
 - An API error, refusal, or empty reply.
 
 Each decision is logged on the dashboard with the path used (claude, route_planner, or template) and the reason.
+
+## Known limitations
+
+- **A late, sharp turn toward a cliff gets a direct warning without guidance.** Guidance needs the skier's path to point over a cliff edge while they are still more than 15 m from its zone. If the turn toward the cliff comes later than that, the first alert is the "Stop now" warning. In testing (scenario 2, 20 random variants on 2026-10-24) this happened in 2 of 20 runs, still 12 s before the edge.

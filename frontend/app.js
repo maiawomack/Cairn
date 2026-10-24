@@ -46,6 +46,8 @@ const style = {
     skier: { type: "geojson", data: emptyCollection() },
     "skier-trail": { type: "geojson", data: emptyCollection() },
     "raw-gps": { type: "geojson", data: emptyCollection() },
+    // Safe lines through the bowls (build_safe_lines.py): drawn only when a cliff alert offers one.
+    "safe-lines": { type: "geojson", data: "/data/safe_lines.geojson" },
   },
   terrain: { source: "dem-terrain", exaggeration: 1.3 },
   sky: {
@@ -190,6 +192,31 @@ const TOP_LAYERS = [
     paint: { "line-color": ROUTE_COLOR, "line-width": 2.5, "line-opacity": 0.85 },
   },
   {
+    // The line a cliff alert offered: dashed while offered, solid with a glow once the skier is on it.
+    id: "on-line-glow",
+    type: "line",
+    source: "safe-lines",
+    filter: ["==", ["get", "id"], ""],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ROUTE_COLOR, "line-width": 12, "line-opacity": 0.18, "line-blur": 4 },
+  },
+  {
+    id: "offered-line",
+    type: "line",
+    source: "safe-lines",
+    filter: ["==", ["get", "id"], ""],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ROUTE_COLOR, "line-width": 3, "line-opacity": 0.9, "line-dasharray": [2, 1.5] },
+  },
+  {
+    id: "on-line",
+    type: "line",
+    source: "safe-lines",
+    filter: ["==", ["get", "id"], ""],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ROUTE_COLOR, "line-width": 4, "line-opacity": 0.95 },
+  },
+  {
     // Raw GPS fixes as faint dots; ones the geofence left out of the fit get a red ring.
     id: "raw-gps",
     type: "circle",
@@ -308,6 +335,7 @@ function startReplay(scenarioId, speed = chosenSpeed) {
   let camera = null;
   setReplayButton(scenarioId);
   setSpeedButtons(speed);
+  clearSafeLine();
 
   replaySource = new EventSource(`/api/replay/${encodeURIComponent(scenarioId)}?speed=${speed}`);
   replaySource.addEventListener("session", (event) => {
@@ -524,7 +552,10 @@ agentEvents.onmessage = (event) => {
   }
   // History replays on page load; only show and speak warnings that happen now.
   const fresh = Date.parse(message.time) > PAGE_OPENED_AT - 2000;
-  if (fresh && role === "coordinator" && message.type === "decision") showBanner(message.data);
+  if (fresh && role === "coordinator" && message.type === "decision") {
+    showBanner(message.data);
+    showSafeLine(message.data);
+  }
   if (fresh && role === "voice") handleVoice(message);
   const liveOnly = role === "voice" && ["start", "chunk", "end"].includes(message.type);
   if (message.type !== "output" && !liveOnly) addLogLine(message);
@@ -549,6 +580,23 @@ function showBanner(decision) {
     banner.classList.add("fading");
     setTimeout(() => { banner.hidden = true; }, 600);
   }, BANNER_SECONDS * 1000);
+}
+
+// The offered safe line: dashed when a cliff alert names it, solid once the skier is on it.
+function showSafeLine(decision) {
+  const id = decision.safe_line_id;
+  if (!id) return;
+  if (decision.level === "on_line") {
+    map.setFilter("offered-line", ["==", ["get", "id"], ""]);
+    map.setFilter("on-line", ["==", ["get", "id"], id]);
+    map.setFilter("on-line-glow", ["==", ["get", "id"], id]);
+  } else if (decision.level === "guidance" || decision.level === "warning") {
+    map.setFilter("offered-line", ["==", ["get", "id"], id]);
+  }
+}
+
+function clearSafeLine() {
+  for (const layer of ["offered-line", "on-line", "on-line-glow"]) map.setFilter(layer, ["==", ["get", "id"], ""]);
 }
 
 // Browsers only allow audio after a click, so the context starts on the first one.

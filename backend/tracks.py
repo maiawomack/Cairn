@@ -186,9 +186,22 @@ def scenario_1(seed=11):
     }
 
 
-def scenario_2(seed=12):
-    """Advanced skier on Garnet Bowl Right in flat light drifts off the line onto garnet-cliff-band-1."""
+# Scenario 2: the drift turns back this close to the cliff line, a beat after the warning
+# (which comes about 31-35 m out), and rejoins Garnet Bowl Right this far below where it left.
+TURN_BACK_AT_M = 24
+REJOIN_AFTER_M = 45
+
+
+def scenario_2(seed=12, recover=True):
+    """Advanced skier on Garnet Bowl Right in flat light drifts off the line toward
+    garnet-cliff-band-1, hears the warning, turns back onto Garnet Bowl Right and skis it out.
+
+    recover=False keeps drifting onto the cliff instead (identical up to the turn), so a
+    test can measure how long the guidance left before the edge."""
     garnet_right = below_ladder(osm_line(RUNS_FILE, "way/907542959"))  # drawn top to bottom in OSM
+    # Like scenario 1, the run out ends where the line leaves Garnet Bowl: past that, the mapped
+    # line points toward diamond-cliff-band-1, and guidance there is correct, not this scenario.
+    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length
     cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1, low side on its right
 
     on_line = Route(garnet_right)
@@ -198,20 +211,45 @@ def scenario_2(seed=12):
     # no contrast in flat light the skier keeps drifting with the fall line.
     target = cliff[len(cliff) // 2]
     pull = (leave[0] + heading[0] * 40, leave[1] + heading[1] * 40)
-    route = Route([p for p, c in zip(garnet_right, on_line.cumulative) if c < leave_s] + [leave]
-                  + bezier(leave, pull, target))
+    drift = bezier(leave, pull, target, n=40)
+    turn_i = next(i for i, q in enumerate(drift) if math.dist(q, nearest_on_line(q, cliff)) <= TURN_BACK_AT_M)
+    turn = drift[turn_i]
 
+    # Following the advice: momentum carries them a few metres on, then they curve back
+    # onto the line further down and ski the rest of it.
+    rejoin_s = min(on_line.length - 10, leave_s + REJOIN_AFTER_M)
+    rejoin, _ = on_line.at(rejoin_s)
+    dx, dy = turn[0] - drift[turn_i - 1][0], turn[1] - drift[turn_i - 1][1]
+    norm = math.hypot(dx, dy) or 1
+    carry = (turn[0] + dx / norm * 8, turn[1] + dy / norm * 8)
+    recovery = bezier(turn, carry, rejoin, n=16)
+    before = [q for q, c in zip(garnet_right, on_line.cumulative) if c < leave_s] + [leave]
+    rest = [q for q, c in zip(garnet_right, on_line.cumulative) if rejoin_s < c < bowl_end_m] + [on_line.at(bowl_end_m)[0]]
+    if not recover:
+        route = Route(before + drift[1:])
+        legs = [(leave_s, 24, 6, 5), (route.length, 20, 3, 7)]
+        points, truth = simulate(route, legs, seed=seed)
+        return {"id": "scenario_2_no_recovery", "ability": "advanced", "points": points, "truth": truth}
+    route = Route(before + drift[1:turn_i + 1] + recovery + rest)
+
+    drift_end = Route(before + drift[1:turn_i + 1]).length
+    recovery_end = Route(before + drift[1:turn_i + 1] + recovery).length
     legs = [
-        (leave_s, 24, 6, 5),          # cautious turns on the line: flat light, little contrast
-        (route.length, 20, 3, 7),     # drifting off the line, turns getting smaller
+        (leave_s, 24, 6, 5),             # cautious turns on the line: flat light, little contrast
+        (drift_end, 20, 3, 7),           # drifting off the line, turns getting smaller
+        (recovery_end, 13, 2, 6),        # hears the warning, checks speed, turns back to the line
+        (route.length, 24, 6, 5),        # back on Garnet Bowl Right, skiing it out
     ]
     points, truth = simulate(route, legs, seed=seed)
     return {
         "id": "scenario_2",
-        "description": "Advanced skier on Garnet Bowl Right in flat light drifts toward garnet-cliff-band-1",
+        "description": "Advanced skier on Garnet Bowl Right in flat light drifts toward garnet-cliff-band-1, "
+                       "takes the advice and skis Garnet Bowl Right out",
         "ability": "advanced",
-        "expected": "Garnet Bowl entry briefing, then guidance for garnet-cliff-band-1 in time to change line",
+        "expected": "briefing, guidance for garnet-cliff-band-1 in time to change line, warning, "
+                    "then \"You're on Garnet Bowl Right.\" and nothing else",
         "target_zone": "garnet-cliff-band-1",
+        "seed": seed,
         "rate_hz": RATE_HZ,
         "points": points,
         "truth": truth,

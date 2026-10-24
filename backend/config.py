@@ -68,6 +68,12 @@ CLIFF_EDGE_M = _number("CLIFF_EDGE_M", 8)
 # Extra look ahead rays this many degrees either side of the smoothed heading. Measured on 20
 # flat-light drifts: 0 deg gave guidance first in 16/20 (one 2 s before the edge), 6 deg in 20/20.
 CLIFF_RAY_SPREAD_DEG = _number("CLIFF_RAY_SPREAD_DEG", 6)
+# After any warning, guidance for other cliffs waits this long: one urgent message at a time.
+CLIFF_QUIET_AFTER_WARNING_S = _number("CLIFF_QUIET_AFTER_WARNING_S", 8)
+# "You're on <line>": the smoothed position within this distance of the offered safe line
+# for this many fixes in a row.
+ON_LINE_M = _number("ON_LINE_M", 12)
+ON_LINE_CONFIRM_FIXES = int(_number("ON_LINE_CONFIRM_FIXES", 2))
 
 
 def warning_distance_m(speed_m_s, zone_type="cliff"):
