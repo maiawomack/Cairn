@@ -40,7 +40,7 @@ Hard rule: geofence hits inside a cliff zone ALWAYS trigger a warning, even if C
 ## Stack
 
 - Backend: Python, FastAPI
-- Frontend: one HTML page with plain JavaScript and Leaflet for the map
+- Frontend: one HTML page with plain JavaScript and MapLibre GL JS (v6, ES module from unpkg, pinned exact version) for the 3D map
 - Map data: OpenSkiMap / OpenStreetMap export for Blackcomb as GeoJSON, plus hand drawn hazard polygons
 - Live updates to the dashboard: WebSocket or Server Sent Events from the backend
 - Claude: Anthropic API, called from the backend only. Use a fast current model; check the Anthropic docs for the exact model name rather than guessing.
@@ -128,11 +128,18 @@ Keep it to one panel and one list. No auth, no history beyond the current sessio
 
 ## Dashboard design
 
-Vibe: a field map. Calm paper map by default, loud only during a warning, matching the voice design. References: an illustrated resort trail map, a USGS topo map, and a clean Japanese hiking map. Use them as style references only; do not use the resort's trail map artwork as a layer.
+Vibe: a painted panoramic trail map. The terrain is the star; routes are thin and quiet on top. Calm by default, loud only during a warning, matching the voice design. Reference: a painted panoramic resort trail map, as a style reference only; never use the resort's trail map artwork as a layer.
 
-- Base map: OpenTopoMap tiles in Leaflet (contour lines, hillshade), with required attribution. Soften with a cream overlay if needed.
-- Palette (define once as CSS variables): paper cream background, contour brown, hazard red, route purple, slate text. Avoid bright UI blues.
-- Hazards use skier map language: red diagonal hatching for cliff areas and permanently closed areas, orange dashed line for the ski area boundary. Use SVG patterns for hatching.
+- Base map: MapLibre GL JS with 3D terrain, no raster basemap. The painterly look comes from the DEM itself: a `color-relief` layer (sage forest in the valley to snow above treeline) under a soft `igor` hillshade with blue-violet shadows, on a cream background.
+- DEM: AWS Terrain Tiles (Tilezen terrarium, `s3.amazonaws.com/elevation-tiles-prod`), free with no key. Required attribution: Canada OGL, USGS SRTM/GMTED2010 and NOAA ETOPO1 lines from the Tilezen attribution list, plus "© OpenStreetMap contributors" for the runs and hazards.
+- Camera: pitch about 60°, Spanky's Ladder centered, looking south from the Glacier bowls up at the Blackcomb ridge, so the cliff bands below the Ladder face the viewer.
+- Palette (define once as CSS variables): paper cream, snow white, forest sage, shadow blue-violet, hazard red, route purple, slate text. Avoid bright UI blues.
+- Runs: thin (1.5px), dashed, semi-transparent lines, subtly colored by difficulty. No labels; the name shows on hover.
+- Lifts: thin gray lines, hidden by default.
+- Hazards: soft red diagonal hatching (a canvas pattern added with `map.addImage`), never solid fills. Cliffs are hatched bands with a fine red line; closed areas are hatched with a faint outline. Only OSM cliffs and closed areas within about 500 m of Spanky's Ladder are shown.
+- Data: all features are clipped to the fetch box in `fetch_osm.py`. The box itself is not drawn.
+- One clear marker for Spanky's Ladder. No other labels by default.
+- A small layer toggle (runs, lifts, hazards) in a corner.
 - Routes: the skier's track and safe exits as clean purple lines with small direction arrows, like hiking map routes.
 - Skier: a small dot with a fading trail of recent positions.
 - Type: a crisp serif for map labels and headings, monospace for the agent log.

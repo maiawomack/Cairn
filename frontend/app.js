@@ -1,109 +1,250 @@
-// Cairn map. Plain Leaflet; styling here is a placeholder until the dashboard design pass.
+// Cairn map: a painted panorama of Blackcomb built from a DEM, with quiet routes on top.
+import * as maplibregl from "maplibre-gl";
 
-const SPANKYS_LADDER = [50.0977, -122.8811];
+// [lon, lat], midpoint of OSM way 461517641.
+const SPANKYS_LADDER = [-122.8811, 50.0977];
 
-const map = L.map("map").setView(SPANKYS_LADDER, 15);
+// Only show OSM hazards this close to Spanky's Ladder (dist_to_spankys_m is set by fetch_osm.py).
+const HAZARD_RADIUS_M = 500;
 
-L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
-  maxZoom: 17,
+// AWS Terrain Tiles (Tilezen). Free, no key. Attribution lines below are the
+// ones that apply to Whistler from https://github.com/tilezen/joerd/blob/master/docs/attribution.md
+const DEM_SOURCE = {
+  type: "raster-dem",
+  tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+  encoding: "terrarium",
+  tileSize: 256,
+  maxzoom: 15,
   attribution:
-    'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-    '<a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; ' +
-    '<a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-}).addTo(map);
-
-// North American trail map colors, keyed by OSM piste:difficulty.
-const DIFFICULTY_COLORS = {
-  novice: "#2e8b3a",
-  easy: "#2e8b3a",
-  intermediate: "#2b5fa8",
-  advanced: "#222222",
-  expert: "#222222",
-  freeride: "#222222",
+    '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain Tiles</a>: ' +
+    "Canada terrain data contains information licensed under the Open Government Licence – Canada; " +
+    "SRTM and GMTED2010 courtesy of the U.S. Geological Survey; ETOPO1 U.S. NOAA",
 };
 
-function runStyle(feature) {
-  const p = feature.properties;
-  if (p.kind === "lift") {
-    return { color: "#5b3a29", weight: 2, dashArray: "6 4" };
-  }
-  const color = DIFFICULTY_COLORS[p["piste:difficulty"]] || "#888888";
-  const offPiste = p["piste:type"] !== "downhill" || p["piste:grooming"] === "backcountry";
-  return {
-    color,
-    weight: p.kind === "run" && feature.geometry.type === "Polygon" ? 1 : 3,
-    fillOpacity: 0.08,
-    dashArray: offPiste ? "2 5" : null,
-  };
-}
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-function hazardStyle(feature) {
-  const kind = feature.properties.kind;
-  if (kind === "ski_area_boundary") {
-    return { color: "#e07b00", weight: 2, dashArray: "8 6", fill: false };
-  }
-  return { color: "#c62828", weight: kind === "cliff" ? 4 : 2, fillOpacity: 0.2 };
-}
+// Subtle trail map colors, keyed by OSM piste:difficulty.
+const RUN_COLOR = [
+  "match", ["get", "piste:difficulty"],
+  ["novice", "easy"], "#4f7d4c",
+  "intermediate", "#4b6894",
+  ["advanced", "expert", "freeride"], "#2f2f33",
+  "#7a7a7a",
+];
 
-// OSM tag values are user edited text, so escape them before putting them in HTML.
-function escapeHTML(value) {
-  const div = document.createElement("div");
-  div.textContent = value;
-  return div.innerHTML;
-}
+const style = {
+  version: 8,
+  sources: {
+    // MapLibre recommends separate sources for terrain and hillshade.
+    "dem-terrain": DEM_SOURCE,
+    "dem-shade": DEM_SOURCE,
+    runs: { type: "geojson", data: "/data/blackcomb_runs.geojson", attribution: OSM_ATTRIBUTION },
+    hazards: { type: "geojson", data: "/data/osm_hazards.geojson" },
+  },
+  terrain: { source: "dem-terrain", exaggeration: 1.3 },
+  sky: {
+    "sky-color": "#c9d6e3",
+    "horizon-color": "#f3ede0",
+    "fog-color": "#f3ede0",
+    "fog-ground-blend": 0.6,
+    "horizon-fog-blend": 0.7,
+  },
+  layers: [
+    { id: "paper", type: "background", paint: { "background-color": "#f3ede0" } },
+    {
+      // Hypsometric tint: sage forest in the valley, snow above treeline.
+      id: "relief",
+      type: "color-relief",
+      source: "dem-shade",
+      paint: {
+        "color-relief-color": [
+          "interpolate", ["linear"], ["elevation"],
+          600, "#6f876a",
+          1300, "#87a07f",
+          1650, "#b3c1aa",
+          1850, "#e8e9e2",
+          2100, "#f6f3ec",
+          2500, "#fdfcf8",
+        ],
+      },
+    },
+    {
+      id: "hillshade",
+      type: "hillshade",
+      source: "dem-shade",
+      paint: {
+        "hillshade-method": "igor",
+        "hillshade-exaggeration": 1,
+        "hillshade-shadow-color": "#36406a",
+        "hillshade-highlight-color": "#fffaf0",
+        "hillshade-accent-color": "#6b5d55",
+        "hillshade-illumination-anchor": "map",
+      },
+    },
+    {
+      id: "runs",
+      type: "line",
+      source: "runs",
+      filter: ["==", ["get", "kind"], "run"],
+      layout: { "line-cap": "round" },
+      paint: {
+        "line-color": RUN_COLOR,
+        "line-width": 1.5,
+        "line-opacity": 0.6,
+        "line-dasharray": [3, 2],
+      },
+    },
+    {
+      id: "lifts",
+      type: "line",
+      source: "runs",
+      filter: ["==", ["get", "kind"], "lift"],
+      layout: { visibility: "none" },
+      paint: { "line-color": "#6e6e6e", "line-width": 1, "line-opacity": 0.7 },
+    },
+    // Hazard layers are added on style.load, once the hatch image exists (see HAZARD_LAYERS).
+    // Invisible wide lines so the thin runs and lifts are easy to hover.
+    {
+      id: "runs-hover",
+      type: "line",
+      source: "runs",
+      filter: ["==", ["get", "kind"], "run"],
+      paint: { "line-width": 12, "line-opacity": 0 },
+    },
+    {
+      id: "lifts-hover",
+      type: "line",
+      source: "runs",
+      filter: ["==", ["get", "kind"], "lift"],
+      layout: { visibility: "none" },
+      paint: { "line-width": 12, "line-opacity": 0 },
+    },
+  ],
+};
 
-function popup(feature, layer) {
-  const p = Object.fromEntries(
-    Object.entries(feature.properties).map(([k, v]) => [k, escapeHTML(String(v))])
-  );
-  const lines = [
-    `<b>${p.name || "(unnamed)"}</b>`,
-    p.kind,
-    p["piste:type"] && `piste:type=${p["piste:type"]}`,
-    p["piste:difficulty"] && `difficulty=${p["piste:difficulty"]}`,
-    p.aerialway && `aerialway=${p.aerialway}`,
-    p.description,
-    `<a href="https://www.openstreetmap.org/${p.osm_id}" target="_blank">${p.osm_id}</a>`,
+const HAZARD_LAYERS = [
+  {
+    // Closed areas, plus the one OSM cliff that is mapped as an area.
+    id: "hazard-area-hatch",
+    type: "fill",
+    source: "hazards",
+    filter: hazardFilter(null, "Polygon"),
+    paint: { "fill-pattern": "hatch" },
+  },
+  {
+    id: "hazard-outline",
+    type: "line",
+    source: "hazards",
+    filter: hazardFilter(null, "Polygon"),
+    paint: { "line-color": "#b23a3a", "line-width": 1, "line-opacity": 0.5 },
+  },
+  {
+    id: "cliff-hatch",
+    type: "line",
+    source: "hazards",
+    filter: hazardFilter("cliff", "LineString"),
+    paint: { "line-pattern": "hatch", "line-width": 8 },
+  },
+  {
+    id: "cliff-line",
+    type: "line",
+    source: "hazards",
+    filter: hazardFilter("cliff", "LineString"),
+    paint: { "line-color": "#b23a3a", "line-width": 0.8, "line-opacity": 0.6 },
+  },
+];
+
+// Cliffs and closed areas near Spanky's. Ski area boundary is left out.
+// geometry-type is "LineString" for both LineString and MultiLineString.
+function hazardFilter(kind, geometryType) {
+  const filter = [
+    "all",
+    ["<=", ["get", "dist_to_spankys_m"], HAZARD_RADIUS_M],
+    kind ? ["==", ["get", "kind"], kind] : ["in", ["get", "kind"], ["literal", ["cliff", "closed"]]],
   ];
-  layer.bindPopup(lines.filter(Boolean).join("<br>"));
+  if (geometryType) filter.push(["==", ["geometry-type"], geometryType]);
+  return filter;
 }
 
-async function loadGeoJSON(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-  return response.json();
-}
+const LAYER_GROUPS = {
+  runs: ["runs", "runs-hover"],
+  lifts: ["lifts", "lifts-hover"],
+  hazards: HAZARD_LAYERS.map((layer) => layer.id),
+};
 
-async function main() {
-  const [runs, hazards] = await Promise.all([
-    loadGeoJSON("/data/blackcomb_runs.geojson"),
-    loadGeoJSON("/data/osm_hazards.geojson"),
-  ]);
-
-  const runsLayer = L.geoJSON(runs, { style: runStyle, onEachFeature: popup }).addTo(map);
-  const hazardsLayer = L.geoJSON(hazards, { style: hazardStyle, onEachFeature: popup }).addTo(map);
-
-  // The Overpass fetch box, so we can see what is and isn't covered.
-  const [west, south, east, north] = runs.bbox;
-  const boxLayer = L.rectangle([[south, west], [north, east]], {
-    color: "#6a1b9a", weight: 1, fill: false, dashArray: "4 4",
-  }).addTo(map);
-
-  const spankysLayer = L.circleMarker(SPANKYS_LADDER, { radius: 6, color: "#6a1b9a" })
-    .bindTooltip("Spanky's Ladder", { permanent: true, direction: "right" })
-    .addTo(map);
-
-  L.control.layers(null, {
-    "Runs and lifts": runsLayer,
-    "OSM hazards": hazardsLayer,
-    "Fetch box": boxLayer,
-    "Spanky's Ladder": spankysLayer,
-  }).addTo(map);
-
-  map.fitBounds(boxLayer.getBounds());
-}
-
-main().catch((error) => {
-  console.error(error);
-  alert(`Could not load map data: ${error.message}`);
+const map = new maplibregl.Map({
+  container: "map",
+  style,
+  center: SPANKYS_LADDER,
+  // Looking south from the Glacier bowls up at Spanky's and the Blackcomb ridge,
+  // so the cliff bands below the Ladder face the viewer.
+  zoom: 14,
+  pitch: 60,
+  bearing: 190,
+  maxPitch: 75,
+  attributionControl: { compact: true },
 });
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+
+// Soft red diagonal hatching, drawn once on a canvas and used as a fill and line pattern.
+function hatchImage() {
+  const size = 12;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "rgba(178, 58, 58, 0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  // Three strokes so the diagonal continues across tile edges.
+  for (const offset of [-size, 0, size]) {
+    ctx.moveTo(offset, size);
+    ctx.lineTo(offset + size, 0);
+  }
+  ctx.stroke();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+// style.load, not load: load waits for every terrain tile, which can take a while.
+map.on("style.load", () => {
+  map.addImage("hatch", hatchImage());
+  for (const layer of HAZARD_LAYERS) {
+    map.addLayer(layer, "runs-hover");
+  }
+});
+
+new maplibregl.Marker({ element: spankysMarker(), anchor: "left", offset: [-8, 0] })
+  .setLngLat(SPANKYS_LADDER)
+  .addTo(map);
+
+function spankysMarker() {
+  const el = document.createElement("div");
+  el.className = "spankys-marker";
+  el.innerHTML = '<span class="dot"></span><span class="label">Spanky’s Ladder</span>';
+  return el;
+}
+
+// Run and lift names on hover only.
+const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "run-name", offset: 8 });
+
+for (const layer of ["runs-hover", "lifts-hover"]) {
+  map.on("mousemove", layer, (event) => {
+    const name = event.features[0].properties.name;
+    if (!name) return hoverPopup.remove();
+    map.getCanvas().style.cursor = "pointer";
+    hoverPopup.setLngLat(event.lngLat).setText(name).addTo(map);
+  });
+  map.on("mouseleave", layer, () => {
+    map.getCanvas().style.cursor = "";
+    hoverPopup.remove();
+  });
+}
+
+for (const checkbox of document.querySelectorAll(".layer-toggle input")) {
+  checkbox.addEventListener("change", () => {
+    const visibility = checkbox.checked ? "visible" : "none";
+    for (const layer of LAYER_GROUPS[checkbox.dataset.group]) {
+      map.setLayoutProperty(layer, "visibility", visibility);
+    }
+  });
+}
