@@ -37,6 +37,8 @@ GPS replay → smoothing → geofence check against the hazard map → Claude wr
 
 Hard rule: geofence hits inside a cliff zone ALWAYS trigger a warning, even if Claude fails, is slow, or disagrees. Claude chooses the wording and the reroute, never whether a cliff exists. If Claude takes longer than about 1.5 seconds, speak a template warning from the hazard zone instead.
 
+Hard rule: every zone in `data/hazard_zones.geojson` always stays in the hazard map. Agents (Creao or Claude) can annotate zones (severity, applies_to, hint) but can never remove a zone, so no agent can make a cliff disappear. The merge step enforces this.
+
 ## Stack
 
 - Backend: Python, FastAPI
