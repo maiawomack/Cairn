@@ -541,12 +541,8 @@ const agentEvents = new EventSource("/api/events");
 agentEvents.onmessage = (event) => {
   const message = JSON.parse(event.data);
   const role = message.from.replace("creao:", "");
-  const node = document.querySelector(`.org-chart [data-role="${role}"]`);
-  if (node) updateOrgNode(node, message);
+  if (role in agentState) updateOrgBox(role, message);
   if (role === "orchestrator") {
-    if (message.type === "started") {
-      for (const li of document.querySelectorAll(".org-chart [data-role]")) setOrgState(li, "", "");
-    }
     runButton.disabled = message.type === "started";
     if (message.type === "finished") loadConditions();
   }
@@ -653,19 +649,74 @@ function speakWithBrowser(line) {
   window.speechSynthesis.speak(new SpeechSynthesisUtterance(line));
 }
 
-function updateOrgNode(node, message) {
-  const { type, data } = message;
-  if (type === "started") setOrgState(node, "running", "starting");
-  if (type === "status") setOrgState(node, "running", `${data.status} ${Math.round(data.elapsed_s)} s`);
-  if (type === "finished") setOrgState(node, "done", `${data.duration_s ?? data.wall_s} s`);
-  if (type === "failed") setOrgState(node, "failed", "failed");
+// ---- Agent org chart ----
+
+const AGENT_TITLES = {
+  conditions: "Conditions Analyst",
+  terrain: "Terrain Scout",
+  route: "Route Planner",
+  incident: "Incident Responder",
+};
+// Per role: { lastRun: {duration_s, finished_at, run_id}, output } from /api/agents/state,
+// kept up to date by the live agent messages.
+const agentState = { conditions: {}, terrain: {}, route: {}, incident: {} };
+
+function orgBox(role) {
+  return document.querySelector(`.org-box[data-role="${role}"]`);
 }
 
-function setOrgState(node, state, label) {
-  node.classList.remove("running", "done", "failed");
-  if (state) node.classList.add(state);
-  node.querySelector("small").textContent = label;
+function setOrgBox(role, state, runText) {
+  const box = orgBox(role);
+  box.classList.remove("running", "done", "failed");
+  if (state) box.classList.add(state);
+  box.querySelector(".org-run").textContent = runText;
 }
+
+function lastRunText(role) {
+  const run = agentState[role].lastRun;
+  if (!run) return role === "incident" ? "no incidents" : "not run yet";
+  const when = new Date(run.finished_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `last run ${run.duration_s} s · ${when}`;
+}
+
+function updateOrgBox(role, message) {
+  const { type, data } = message;
+  if (type === "started") setOrgBox(role, "running", "running…");
+  if (type === "status") setOrgBox(role, "running", `${data.status} · ${Math.round(data.elapsed_s)} s`);
+  if (type === "finished") {
+    agentState[role].lastRun = data;
+    setOrgBox(role, "done", lastRunText(role));
+  }
+  if (type === "output") agentState[role].output = role === "conditions" ? { conditions: data } : data;
+  if (type === "failed") setOrgBox(role, "failed", `failed: ${(data.error || "").slice(0, 40)}`);
+}
+
+async function loadAgentState() {
+  const state = await (await fetch("/api/agents/state", { cache: "no-store" })).json();
+  for (const [role, { last_run: lastRun, output }] of Object.entries(state.roles)) {
+    agentState[role] = { lastRun, output };
+    setOrgBox(role, lastRun ? "done" : "", lastRunText(role));
+  }
+  runButton.disabled = state.running;
+}
+
+// Click a box to read that agent's last output.
+const outputDialog = document.getElementById("agent-output");
+for (const box of document.querySelectorAll(".org-box[data-role]")) {
+  box.addEventListener("click", () => {
+    const role = box.dataset.role;
+    const { lastRun, output } = agentState[role];
+    document.getElementById("agent-output-title").textContent = AGENT_TITLES[role];
+    document.getElementById("agent-output-meta").textContent = lastRun
+      ? `run ${lastRun.run_id.slice(0, 8)} · ${lastRun.duration_s} s · finished ${new Date(lastRun.finished_at).toLocaleString()}`
+      : lastRunText(role);
+    document.getElementById("agent-output-body").textContent = output ? JSON.stringify(output, null, 2) : "No output yet.";
+    outputDialog.showModal();
+  });
+}
+document.getElementById("agent-output-close").addEventListener("click", () => outputDialog.close());
+
+loadAgentState();
 
 function addLogLine(message) {
   const list = document.getElementById("agent-log");

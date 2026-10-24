@@ -137,6 +137,22 @@ async def event_stream():
     return StreamingResponse(events(), media_type="text/event-stream")
 
 
+@app.get("/api/agents/state")
+def agents_state():
+    """Last run time and last output per Creao role, from data/agent_outputs/ (for the org chart)."""
+    outputs_dir = DATA_DIR / "agent_outputs"
+    runs_file = outputs_dir / "creao_runs.json"
+    runs = {r["role"]: r for r in json.loads(runs_file.read_text())} if runs_file.exists() else {}
+    state = {}
+    for role in ("conditions", "terrain", "route", "incident"):
+        output_file = outputs_dir / f"{role}.json"
+        state[role] = {
+            "last_run": runs.get(role),
+            "output": json.loads(output_file.read_text()) if output_file.exists() else None,
+        }
+    return {"running": orchestrator.is_running(), "roles": state}
+
+
 @app.post("/api/agents/run")
 def run_agents():
     """Start the Creao chain in the background. Spends credits, so only one chain at a time."""
