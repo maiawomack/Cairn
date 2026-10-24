@@ -5,6 +5,8 @@ Shapes come from docs/creao/api-trigger.md:
        -> {"id": runId, "status": "pending", "appId", "appName"}
   GET  https://agent.creao.ai/api/v1/apps/{appId}/runs/{runId}
        poll until status is completed, failed or cancelled
+       -> {id, status, threadId, errorCode, createdAt, startedAt, completedAt,
+           result: {text, chatText, artifacts: [{id, url, type, title}]}}   (seen 2026-10-24)
   Errors: {"error": "ERROR_CODE"}
 Each capi_ key only runs its own agent, so every role has its own key in .env.
 We poll instead of using webhooks: Creao rejects localhost webhook URLs.
@@ -117,28 +119,63 @@ def _save_raw(role, run_id, run):
     (RUNS_LOG_DIR / f"{stamp}-{role}-{run_id}.json").write_text(json.dumps(run, indent=1))
 
 
-def result_text(run):
-    """The agent's final text. Documented field: result.text (result.chatText if it differs)."""
+def result_texts(run):
+    """The agent's output texts, most structured first.
+
+    Seen on a real poll (2026-10-24): result.text holds the agent's output (bare JSON
+    for the Conditions Analyst) and result.chatText holds its narration.
+    """
     result = run.get("result") or {}
-    text = result.get("text") or result.get("chatText")
-    if not text:
+    texts = [t for t in (result.get("text"), result.get("chatText")) if t]
+    if not texts:
         raise CreaoError(f"run has no result.text; keys: {sorted(run)}; result keys: {sorted(result)}")
-    return text
+    return texts
 
 
 def extract_json(text):
-    """Parse the last ```json code block in the agent's text."""
+    """Parse the agent's JSON: the whole text if it is bare JSON, else the last ```json block."""
+    stripped = text.strip()
+    if stripped.startswith("{"):
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            pass  # not bare JSON after all; look for a fenced block
     blocks = re.findall(r"```json\s*\n(.*?)```", text, re.DOTALL)
     if not blocks:
-        raise CreaoError("no ```json block in the agent's result")
+        raise CreaoError("no bare JSON and no ```json block in the agent's result")
     try:
         return json.loads(blocks[-1])
     except json.JSONDecodeError as error:
         raise CreaoError(f"the last ```json block is not valid JSON: {error}") from None
 
 
+def output_json(run):
+    """The first parseable JSON among result.text, then result.chatText."""
+    errors = []
+    for text in result_texts(run):
+        try:
+            return extract_json(text)
+        except CreaoError as error:
+            errors.append(str(error))
+    raise CreaoError("; ".join(errors))
+
+
+def server_duration_s(run):
+    """Run time as Creao recorded it (createdAt to completedAt), or None if missing."""
+    try:
+        created = datetime.fromisoformat(run["createdAt"].replace("Z", "+00:00"))
+        completed = datetime.fromisoformat(run["completedAt"].replace("Z", "+00:00"))
+    except (KeyError, TypeError, ValueError):
+        return None
+    return round((completed - created).total_seconds(), 1)
+
+
 def run_agent(role, inputs, on_status=None):
-    """Create a run, wait for it, and return (parsed JSON output, timing dict, raw run)."""
+    """Create a run, wait for it, and return (parsed JSON output, timing dict, raw run).
+
+    A run that completes but has no parseable JSON raises CreaoError; its raw poll
+    response is already saved in data/creao_runs/ (no need to spend credits again).
+    """
     started_at = datetime.now(timezone.utc)
     t0 = time.monotonic()
     run_id = create_run(role, inputs)
@@ -150,11 +187,13 @@ def run_agent(role, inputs, on_status=None):
         "run_id": run_id,
         "started_at": started_at.isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
-        "duration_s": round(time.monotonic() - t0, 1),
+        # Creao's own timestamps; wall time also includes up to one poll interval of waiting.
+        "duration_s": server_duration_s(run),
+        "wall_s": round(time.monotonic() - t0, 1),
     }
     if run.get("status") != "completed":
         raise CreaoError(f"{role} run {run_id} ended {run.get('status')}: errorCode={run.get('errorCode')}")
-    return extract_json(result_text(run)), timing, run
+    return output_json(run), timing, run
 
 
 def main():
@@ -174,7 +213,7 @@ def main():
     print(json.dumps(run, indent=1))
     print("\nExtracted JSON:")
     print(json.dumps(output, indent=1))
-    print(f"\n{args.role} took {timing['duration_s']} s (run {timing['run_id']})")
+    print(f"\n{args.role} took {timing['duration_s']} s in Creao, {timing['wall_s']} s wall (run {timing['run_id']})")
 
 
 if __name__ == "__main__":

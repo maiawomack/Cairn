@@ -23,3 +23,6 @@ tmp/
 .idea/
 # DEM tiles downloaded by backend/dem.py
 data/dem_cache/
+
+# Raw Creao poll responses (include workspace ids)
+data/creao_runs/
