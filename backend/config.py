@@ -42,5 +42,19 @@ GEOFENCE_PATH_MARGIN_M = _number("GEOFENCE_PATH_MARGIN_M", 10)
 GEOFENCE_CONFIRM_FIXES = int(_number("GEOFENCE_CONFIRM_FIXES", 2))
 
 
-def warning_distance_m(speed_m_s):
+# Closures: a permanent closure next to a run should only warn when the skier keeps
+# heading into it, so a shorter look ahead and about 5 s of agreeing fixes.
+GEOFENCE_CLOSURE_WARNING_BASE_M = _number("GEOFENCE_CLOSURE_WARNING_BASE_M", 15)
+GEOFENCE_CLOSURE_WARNING_LEAD_S = _number("GEOFENCE_CLOSURE_WARNING_LEAD_S", 4)
+GEOFENCE_CLOSURE_CONFIRM_FIXES = int(_number("GEOFENCE_CLOSURE_CONFIRM_FIXES", 5))
+
+
+def warning_distance_m(speed_m_s, zone_type="cliff"):
+    """Look ahead distance. Cliffs, expert terrain and boundaries use the default settings."""
+    if zone_type == "closure":
+        return GEOFENCE_CLOSURE_WARNING_BASE_M + speed_m_s * GEOFENCE_CLOSURE_WARNING_LEAD_S
     return GEOFENCE_WARNING_BASE_M + speed_m_s * GEOFENCE_WARNING_LEAD_S
+
+
+def confirm_fixes(zone_type="cliff"):
+    return GEOFENCE_CLOSURE_CONFIRM_FIXES if zone_type == "closure" else GEOFENCE_CONFIRM_FIXES

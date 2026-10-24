@@ -71,38 +71,75 @@ def fit_motion(fixes):
     return position, speed, heading
 
 
-class Geofence:
-    """Feed GPS fixes in order with update(); it returns the zones that newly warn."""
+def alert_levels(hazard_map, ability):
+    """Which zones alert this skier, and how: ({zone id: "warning" | "heads_up"}, source).
 
-    def __init__(self, zones, ability):
+    With a Route Planner plan for the ability: off_limits zones warn; for advanced and
+    expert, a reroute with exit_id null is a one time calm heads up. For beginner and
+    intermediate, other reroute zones also warn, and an active cliff always warns even if
+    the plan leaves it out (CLAUDE.md: no agent can make a cliff disappear).
+    Until the Route Planner has run, every active zone whose applies_to has the ability warns.
+    """
+    zones = {z["id"]: z for z in hazard_map["zones"] if z.get("active", True)}
+    plan = (hazard_map.get("plans") or {}).get(ability)
+    if not hazard_map.get("complete") or not plan:
+        return {zid: "warning" for zid, z in zones.items() if ability in z.get("applies_to", [])}, "applies_to"
+
+    levels = {zid: "warning" for zid in plan.get("off_limits", []) if zid in zones}
+    careful = ability in ("beginner", "intermediate")
+    for reroute in plan.get("reroutes", []):
+        zid = reroute.get("zone_id")
+        if zid not in zones or zid in levels:
+            continue
+        if careful:
+            levels[zid] = "warning"
+        elif reroute.get("exit_id") is None:
+            levels[zid] = "heads_up"
+    if careful:
+        for zid, zone in zones.items():
+            if zone["type"] == "cliff":
+                levels.setdefault(zid, "warning")
+    return levels, "plan"
+
+
+class Geofence:
+    """Feed GPS fixes in order with update(); it returns the zones that newly alert."""
+
+    def __init__(self, hazard_map, ability):
         self.ability = ability
+        levels, self.source = alert_levels(hazard_map, ability)
         self.zones = [
-            {**z, "ring": [to_xy(lat, lon) for lat, lon in z["polygon"]]}
-            for z in zones
-            if z.get("active", True) and ability in z.get("applies_to", [])
+            {**z, "level": levels[z["id"]], "ring": [to_xy(lat, lon) for lat, lon in z["polygon"]]}
+            for z in hazard_map["zones"]
+            if z["id"] in levels
         ]
         self.fixes = deque(maxlen=config.GEOFENCE_SMOOTHING_FIXES)
         self.streak = {}  # zone id -> consecutive fixes in warning range
         self.warned = set()
 
     def update(self, fix):
-        """fix: {t, lat, lon}. Returns a list of new warnings (one per zone, first time only)."""
+        """fix: {t, lat, lon}. Returns new alerts (one per zone, first time only).
+
+        Each alert has level "warning" or "heads_up" (a calm, one time notice).
+        """
         x, y = to_xy(fix["lat"], fix["lon"])
         self.fixes.append((fix["t"], x, y))
         if len(self.fixes) >= 3:
             position, speed, heading = fit_motion(list(self.fixes))
         else:
             position, speed, heading = (x, y), 0.0, None
-        warn_m = config.warning_distance_m(speed)
 
         warnings = []
         for zone in self.zones:
+            # Closures use a shorter look ahead and need a sustained heading (config.py).
+            warn_m = config.warning_distance_m(speed, zone["type"])
             hit = self._check(zone, position, speed, heading, warn_m)
             self.streak[zone["id"]] = self.streak.get(zone["id"], 0) + 1 if hit else 0
-            if hit and zone["id"] not in self.warned and self.streak[zone["id"]] >= config.GEOFENCE_CONFIRM_FIXES:
+            if hit and zone["id"] not in self.warned and self.streak[zone["id"]] >= config.confirm_fixes(zone["type"]):
                 self.warned.add(zone["id"])
                 warnings.append({
                     "t": fix["t"],
+                    "level": zone["level"],
                     "zone_id": zone["id"],
                     "zone_type": zone["type"],
                     "zone_name": zone["name"],
@@ -134,13 +171,13 @@ class Geofence:
         return None
 
 
-def load_zones():
-    return json.loads(HAZARD_MAP_FILE.read_text())["zones"]
+def load_hazard_map():
+    return json.loads(HAZARD_MAP_FILE.read_text())
 
 
-def run_track(track, zones):
-    """Run a whole track through a fresh geofence. Returns all warnings in order."""
-    geofence = Geofence(zones, track["ability"])
+def run_track(track, hazard_map):
+    """Run a whole track through a fresh geofence. Returns all alerts in order."""
+    geofence = Geofence(hazard_map, track["ability"])
     warnings = []
     for fix in track["points"]:
         warnings.extend(geofence.update(fix))
@@ -148,15 +185,17 @@ def run_track(track, zones):
 
 
 def main():
-    zones = load_zones()
+    hazard_map = load_hazard_map()
+    zones = hazard_map["zones"]
     osm = {f["properties"]["osm_id"]: f for f in json.loads((DATA_DIR / "osm_hazards.geojson").read_text())["features"]}
 
     for name in ("scenario_1", "scenario_2"):
         track = json.loads((TRACKS_DIR / f"{name}.json").read_text())
         truth = {p["t"]: p for p in track["truth"]}
-        warnings = run_track(track, zones)
+        warnings = run_track(track, hazard_map)
         print(f"\n{name} ({track['ability']}): {track['description']}")
         print(f"  expected: {track['expected']}")
+        print(f"  zones chosen by: {Geofence(hazard_map, track['ability']).source}")
         if not warnings:
             print("  no warnings")
         for w in warnings:
@@ -164,7 +203,7 @@ def main():
             true = truth[w["t"]]
             true_xy = to_xy(true["lat"], true["lon"])
             ring = [to_xy(lat, lon) for lat, lon in zone["polygon"]]
-            line = f"  t={w['t']:4.0f} s  {w['zone_id']:26} ({w['reason']}, smoothed {w['distance_m']} m from zone, " \
+            line = f"  t={w['t']:4.0f} s  {w['level']:8} {w['zone_id']:26} ({w['reason']}, smoothed {w['distance_m']} m from zone, " \
                    f"{w['speed_kmh']} km/h, warn range {w['warning_distance_m']} m)"
             line += f"\n           truth: {distance_to_ring(true_xy, ring):.0f} m from zone edge"
             if zone["type"] == "cliff":

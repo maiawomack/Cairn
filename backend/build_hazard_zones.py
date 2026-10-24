@@ -48,6 +48,12 @@ ZONES = {
 
 ENTRANCE_OSM_ID = "way/461517641"
 
+# Rock Alley (an intermediate run) runs through the Ladder entrance. Everything within
+# this half width of it is cut out of spankys-ladder-entrance, so skiers on the run are
+# outside the zone. 25 m matches the entrance buffer and covers turns plus GPS error.
+RUN_CORRIDOR_OSM_ID = "way/461517643"
+RUN_CORRIDOR_M = 25
+
 
 def segment_intersection(a, b, c, d):
     """Point where segments a-b and c-d cross, or None."""
@@ -122,6 +128,115 @@ def buffer_line(coords, half_width_m):
     return [[coords[0][0] + x / meters_per_deg_lon, lat0 + y / meters_per_deg_lat] for x, y in ring]
 
 
+def subtract_corridor(ring, line, half_width_m, cell_m=1.0):
+    """Remove everything within half_width_m of `line` from the polygon `ring` (both lon/lat).
+
+    Plain Python, no shapely: mark 1 m grid cells that are inside the ring and outside
+    the corridor, trace the outline of the kept cells, and simplify it. Returns the
+    kept rings (lon/lat, counterclockwise), largest first.
+    """
+    lon0, lat0 = ring[0]
+    m_lon = 111320 * math.cos(math.radians(lat0))
+    m_lat = 111320
+
+    def local(p):
+        return ((p[0] - lon0) * m_lon, (p[1] - lat0) * m_lat)
+
+    poly = [local(p) for p in ring]
+    path = [local(p) for p in line]
+    min_x, max_x = min(x for x, _ in poly), max(x for x, _ in poly)
+    min_y, max_y = min(y for _, y in poly), max(y for _, y in poly)
+    nx, ny = int((max_x - min_x) / cell_m) + 1, int((max_y - min_y) / cell_m) + 1
+
+    kept = set()
+    for i in range(nx):
+        for j in range(ny):
+            p = (min_x + (i + 0.5) * cell_m, min_y + (j + 0.5) * cell_m)
+            if point_in_ring(p, poly) and distance_to_line(p, path) > half_width_m:
+                kept.add((i, j))
+
+    # Directed outline edges with the kept cell on the left (counterclockwise outer rings).
+    edges = {}
+    for i, j in kept:
+        for neighbour, start, end in (
+            ((i, j - 1), (i, j), (i + 1, j)),
+            ((i + 1, j), (i + 1, j), (i + 1, j + 1)),
+            ((i, j + 1), (i + 1, j + 1), (i, j + 1)),
+            ((i - 1, j), (i, j + 1), (i, j)),
+        ):
+            if neighbour not in kept:
+                edges.setdefault(start, []).append(end)
+
+    rings = []
+    while edges:
+        start = next(iter(edges))
+        loop, current, previous = [start], start, None
+        while True:
+            options = edges[current]
+            if len(options) > 1 and previous is not None:
+                # Diagonal touch: turn left so the two cells stay separate rings.
+                heading = (current[0] - previous[0], current[1] - previous[1])
+                options.sort(key=lambda e: -(heading[0] * (e[1] - current[1]) - heading[1] * (e[0] - current[0])))
+            nxt = options.pop(0)
+            if not options:
+                del edges[current]
+            previous, current = current, nxt
+            if current == start:
+                break
+            loop.append(current)
+        points = [(min_x + i * cell_m, min_y + j * cell_m) for i, j in loop]
+        if ring_area(points) > 0:  # holes (negative area) can't occur for a corridor crossing the zone
+            rings.append(simplify(points, cell_m * 0.75))
+
+    rings.sort(key=ring_area, reverse=True)
+    return [[[lon0 + x / m_lon, lat0 + y / m_lat] for x, y in r + [r[0]]] for r in rings]
+
+
+def point_in_ring(p, ring):
+    result = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        if (y1 > p[1]) != (y2 > p[1]) and p[0] < (x2 - x1) * (p[1] - y1) / (y2 - y1) + x1:
+            result = not result
+    return result
+
+
+def distance_to_line(p, line):
+    best = float("inf")
+    for a, b in zip(line, line[1:]):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length_sq = dx * dx + dy * dy
+        t = 0 if length_sq == 0 else max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length_sq))
+        best = min(best, math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]))
+    return best
+
+
+def ring_area(points):
+    """Signed area (positive = counterclockwise). Points without the closing repeat."""
+    return sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:] + points[:1])) / 2
+
+
+def simplify(points, tolerance):
+    """Douglas-Peucker on a closed ring (points without the closing repeat)."""
+    def dp(chain):
+        if len(chain) < 3:
+            return chain
+        a, b = chain[0], chain[-1]
+        far, far_d = 0, -1.0
+        for k in range(1, len(chain) - 1):
+            d = distance_to_line(chain[k], [a, b])
+            if d > far_d:
+                far, far_d = k, d
+        if far_d <= tolerance:
+            return [a, b]
+        return dp(chain[:far + 1])[:-1] + dp(chain[far:])
+
+    # Split the ring at its two farthest-apart points so both halves simplify well.
+    split = max(range(len(points)), key=lambda k: math.dist(points[0], points[k]))
+    first = dp(points[:split + 1])
+    second = dp(points[split:] + [points[0]])
+    return first[:-1] + second[:-1]
+
+
 def zone_polygon(feature, half_width_m):
     geometry = feature["geometry"]
     if geometry["type"] == "Polygon":
@@ -145,7 +260,16 @@ def main():
     runs = {f["properties"]["osm_id"]: f for f in json.loads(RUNS_FILE.read_text())["features"]}
     hazards = json.loads(OSM_HAZARDS_FILE.read_text())["features"]
 
-    features = [zone_feature(runs[ENTRANCE_OSM_ID], ENTRANCE_BUFFER_M)]
+    entrance = zone_feature(runs[ENTRANCE_OSM_ID], ENTRANCE_BUFFER_M)
+    # Rock Alley shares the Ladder's path for about 100 m, so cut the run out of the zone.
+    pieces = subtract_corridor(entrance["geometry"]["coordinates"][0],
+                               runs[RUN_CORRIDOR_OSM_ID]["geometry"]["coordinates"], RUN_CORRIDOR_M)
+    if not pieces:
+        raise ValueError("the Rock Alley corridor removed the whole spankys-ladder-entrance zone")
+    if len(pieces) > 1:
+        print(f"WARNING: spankys-ladder-entrance split into {len(pieces)} pieces; kept the largest")
+    entrance["geometry"]["coordinates"] = [pieces[0]]
+    features = [entrance]
     for hazard in sorted(hazards, key=lambda f: f["properties"]["dist_to_spankys_m"]):
         p = hazard["properties"]
         if p["kind"] not in ("cliff", "closed") or p["dist_to_spankys_m"] > HAZARD_RADIUS_M:

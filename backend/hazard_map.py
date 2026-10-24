@@ -102,7 +102,9 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
                 warn(f"Route Planner {ability} off_limits names unknown zone {zone_id!r}, dropped")
         reroutes = []
         for reroute in plan.get("reroutes", []):
-            if reroute.get("zone_id") not in zone_ids or reroute.get("exit_id") not in exit_ids:
+            # exit_id null is allowed: no exit, just a heads up (see geofence.py).
+            exit_ok = reroute.get("exit_id") is None or reroute.get("exit_id") in exit_ids
+            if reroute.get("zone_id") not in zone_ids or not exit_ok:
                 warn(f"Route Planner {ability} reroute {reroute.get('zone_id')!r} -> {reroute.get('exit_id')!r} "
                      "names an unknown zone or exit, dropped")
                 continue
@@ -112,6 +114,8 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
     conditions = conditions_output["conditions"]
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        # False until the Route Planner has produced plans; the geofence then falls back to applies_to.
+        "complete": bool(route_output.get("plans")),
         "date": conditions.get("date"),
         "creao_run_link": None,
         "creao_runs": creao_runs,
@@ -151,9 +155,8 @@ def main():
         print("no Route Planner output yet: plans left empty, demo copy not written")
     route = load_output("route") if complete else {}
     hazard_map = build(load_output("conditions"), load_output("terrain"), route, creao_runs)
-    hazard_map["complete"] = complete
-    save(hazard_map, cached=complete)
-    written = HAZARD_MAP_FILE.name + (f" and {CACHED_FILE.name}" if complete else "")
+    save(hazard_map, cached=hazard_map["complete"])
+    written = HAZARD_MAP_FILE.name + (f" and {CACHED_FILE.name}" if hazard_map["complete"] else "")
     print(f"wrote {written}: {len(hazard_map['zones'])} zones, {len(hazard_map['safe_exits'])} exits")
 
 

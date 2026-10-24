@@ -49,7 +49,7 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
     # Geofence the replayed fixes against the current hazard map; warnings go to the dashboard log.
     fence = None
     if geofence.HAZARD_MAP_FILE.exists():
-        fence = geofence.Geofence(geofence.load_zones(), track["ability"])
+        fence = geofence.Geofence(geofence.load_hazard_map(), track["ability"])
     else:
         hub.publish("terrain", "no_hazard_map", {"error": "data/hazard_map.json missing; run agents first"})
 
@@ -57,8 +57,8 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         async for message in replay(track, speed):
             yield f"data: {json.dumps(message)}\n\n"
             if fence:
-                for warning in fence.update(message["data"]):
-                    hub.publish("terrain", "warning", warning)
+                for alert in fence.update(message["data"]):
+                    hub.publish("terrain", alert["level"], alert)
         yield "event: end\ndata: {}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
