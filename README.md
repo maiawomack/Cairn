@@ -27,3 +27,4 @@ Each decision is logged on the dashboard with the path used (claude, route_plann
 ## Known limitations
 
 - **A late, sharp turn toward a cliff gets a direct warning without guidance.** Guidance needs the skier's path to point over a cliff edge while they are still more than 15 m from its zone. If the turn toward the cliff comes later than that, the first alert is the "Stop now" warning. In testing (scenario 2, 20 random variants on 2026-10-24) this happened in 2 of 20 runs, still 12 s before the edge.
+- **Scenario 2 ends on Garnet Bowl Right, where that line exits the bowl (~2,100 m).** Garnet Bowl Left is the lower exit, down to the bowl's lowest point (~2,040 m), and is the line scenarios 1 and 3 ski.
