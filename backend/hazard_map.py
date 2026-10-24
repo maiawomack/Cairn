@@ -123,13 +123,27 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
         if zone_id not in zone_ids or bowl.get("recommended_line_id") not in line_ids:
             warn(f"Route Planner bowl {bowl.get('bowl_id')!r} -> {bowl.get('recommended_line_id')!r} names an unknown bowl or line, dropped")
             continue
-        route["bowls"].append({"zone_id": zone_id, "recommended_line_id": bowl["recommended_line_id"], "why": bowl.get("why")})
+        route["bowls"].append({"zone_id": zone_id, "recommended_line_id": bowl["recommended_line_id"],
+                               "why": bowl.get("why"), "line_note": short_note(bowl.get("line_note"), warn)})
     for guidance in route_output.get("cliff_guidance") or []:
         line_id = guidance.get("line_id")
         if guidance.get("zone_id") not in zone_ids or (line_id is not None and line_id not in line_ids):
             warn(f"Route Planner cliff guidance {guidance.get('zone_id')!r} -> {line_id!r} names an unknown zone or line, dropped")
             continue
-        route["cliff_guidance"].append({k: guidance.get(k) for k in ("zone_id", "line_id", "spoken")})
+        route["cliff_guidance"].append({k: guidance.get(k) for k in ("zone_id", "line_id", "spoken")}
+                                       | {"line_note": short_note(guidance.get("line_note"), warn)})
+
+    # A bowl's recommended line is the line for every cliff it covers (its for_zones), so the
+    # guidance never contradicts the recommendation.
+    covers = {f["properties"]["id"]: set(f["properties"]["for_zones"]) for f in safe_lines}
+    recommended = {zone: b["recommended_line_id"] for b in route["bowls"] for zone in covers[b["recommended_line_id"]]}
+    for guidance in route["cliff_guidance"]:
+        line_id = recommended.get(guidance["zone_id"])
+        if line_id and guidance["line_id"] != line_id:
+            if guidance["line_id"] is not None:
+                warn(f"Route Planner gave {guidance['zone_id']} line {guidance['line_id']!r}; its bowl recommends {line_id!r}, used that")
+            guidance["line_id"] = line_id
+            guidance["line_id_from"] = "bowl recommendation"
     for limit in route_output.get("hard_limits") or []:
         if limit.get("zone_id") not in zone_ids:
             warn(f"Route Planner hard limit {limit.get('zone_id')!r} names an unknown zone, dropped")
@@ -158,6 +172,19 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
         "route": route,
         "notes_for_incident_responder": route_output.get("notes_for_incident_responder"),
     }
+
+
+LINE_NOTE_MAX_WORDS = 10
+
+
+def short_note(note, warn):
+    """A Route Planner line_note, kept only if it fits LINE_NOTE_MAX_WORDS."""
+    if not note:
+        return None
+    if len(note.split()) > LINE_NOTE_MAX_WORDS:
+        warn(f"Route Planner line_note over {LINE_NOTE_MAX_WORDS} words, dropped: {note!r}")
+        return None
+    return note
 
 
 def save(hazard_map, cached=True):

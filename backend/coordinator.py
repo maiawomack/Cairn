@@ -36,7 +36,8 @@ What to write depends on "level":
 - "briefing": they just entered an expert area. Calm and brief, at most 25 words: today's \
 conditions in a few words, then the main hazards, each in a few words. Never tell them to stop or leave.
 - "guidance": a cliff is on their line. Calm and clear, 6 to 12 words: name the hazard, then the \
-safe line to move to. Example: "Cliff band below. Move to the Garnet Bowl Left line." Never say stop.
+safe line to move to. Example: "Cliff band below. Move to the Garnet Bowl Left line." Never say stop. \
+If a line_note is given, offer the line first, then the note in a few words.
 - "warning": they are at a cliff edge, in a closed area, or at the boundary. Firm and urgent, \
 6 to 10 words, may start with "Stop now", then the safe line or exit if one is given.
 
@@ -45,6 +46,7 @@ Always:
 - Never give a direction (left, right, uphill, downhill, back, across) unless that word appears \
 in the facts. A wrong direction can send a skier toward the hazard.
 - Use only area, line, run and exit names that appear in the facts.
+- Never call a line risky or loaded without sending the skier to the safest line in the facts.
 - Never say or suggest that a hazard is not there or not dangerous.
 - If the avalanche rating is not available, say so if you mention it; never state or guess a rating.
 
@@ -56,6 +58,10 @@ HAZARD_WORDS = {
     "expert_terrain": "expert terrain",
     "boundary": "ski area boundary",
 }
+
+# Words that offer a line to the skier. A spoken line that names the safe line must also offer
+# it: Cairn never calls a line risky without sending the skier to the safest one.
+OFFER_WORDS = {"move", "take", "ski", "head", "go", "use", "traverse", "get", "cut", "drift", "work"}
 
 # Words that point the skier somewhere. A line may only use one if it appears in the facts.
 DIRECTION_WORDS = {"left", "right", "uphill", "downhill", "back", "across", "straight",
@@ -90,12 +96,20 @@ def recommended_line(hazard_map, zone):
     """The Route Planner's recommended line for a bowl: {name, why}, or None."""
     entry = next((b for b in (hazard_map.get("route") or {}).get("bowls", []) if b["zone_id"] == zone["id"]), None)
     line = entry and next((l for l in hazard_map.get("safe_lines", []) if l["id"] == entry["recommended_line_id"]), None)
-    return {"name": line["name"], "why": entry.get("why")} if line else None
+    return {"name": line["name"], "why": entry.get("why"), "line_note": entry.get("line_note")} if line else None
 
 
-def safe_line_name(hazard_map, zone):
-    """The proposed safe line for a cliff zone (build_safe_lines.py), or None."""
-    return next((l["name"] for l in hazard_map.get("safe_lines", []) if l["id"] == zone.get("safe_line")), None)
+def safe_line_for(hazard_map, zone):
+    """The line to offer for a cliff, as (name, line_note): the Route Planner's line for it
+    (its bowl's recommendation) if there is one, else the code-owned safe line, else (None, None)."""
+    route = hazard_map.get("route") or {}
+    guidance = next((g for g in route.get("cliff_guidance", []) if g["zone_id"] == zone["id"]), {})
+    line_id = guidance.get("line_id") or zone.get("safe_line")
+    line = next((l for l in hazard_map.get("safe_lines", []) if l["id"] == line_id), None)
+    if line is None:
+        return None, None
+    bowl = next((b for b in route.get("bowls", []) if b["recommended_line_id"] == line_id), {})
+    return line["name"], guidance.get("line_note") or bowl.get("line_note")
 
 
 def safe_exit_name(hazard_map, zone_id):
@@ -134,7 +148,7 @@ def facts_for(alert, zone, hazard_map, ability, agent_spoken):
     facts.update({"zone_name": zone["name"], "hint": zone.get("hint"),
                   "distance_m": alert["distance_m"], "speed_kmh": alert["speed_kmh"]})
     if zone["type"] == "cliff":
-        facts["safe_line"] = safe_line_name(hazard_map, zone)
+        facts["safe_line"], facts["line_note"] = safe_line_for(hazard_map, zone)
     else:
         facts["safe_exit"] = safe_exit_name(hazard_map, alert["zone_id"])
     if agent_spoken:
@@ -151,6 +165,10 @@ def problems(line, level, facts):
         found.append(f"too long ({len(line.split())} words)")
     if level != "warning" and "stop" in words:
         found.append("says stop outside a warning")
+    if level != "briefing" and facts.get("safe_line"):
+        names_line = facts["safe_line"].lower() in line.lower()
+        if not names_line or not OFFER_WORDS & set(words):
+            found.append("doesn't offer the safe line")
     facts_words = set(re.findall(r"[a-z]+", json.dumps(facts).lower()))
     invented = sorted(w for w in set(words) if w in DIRECTION_WORDS - facts_words)
     if invented:
@@ -173,12 +191,14 @@ def template_line(alert, zone, hazard_map, facts):
         if facts["main_hazards"]:
             parts.append(f"Main hazards: {' and '.join(facts['main_hazards'][:2])}.")
         if facts.get("recommended_line"):
-            parts.append(f"Suggested line: {facts['recommended_line']['name']}.")
+            note = facts["recommended_line"].get("line_note")
+            parts.append(f"Suggested line: {facts['recommended_line']['name']}." + (f" {note}" if note else ""))
         return " ".join(parts)
     target = facts.get("safe_line") and f"Move to the {facts['safe_line']} line."
     target = target or (facts.get("safe_exit") and f"{facts['safe_exit']}.") or ""
     if alert["level"] == "guidance":
-        return f"{hazard.capitalize()} below. {target or 'Steer clear of it.'}"
+        note = f" {facts['line_note']}" if facts.get("line_note") else ""
+        return f"{hazard.capitalize()} below. {target or 'Steer clear of it.'}{note}"
     return f"Stop now. {hazard.capitalize()} ahead. {target}".strip()
 
 

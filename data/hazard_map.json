@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-24T19:01:33.526062+00:00",
+ "generated_at": "2026-10-24T19:06:21.525068+00:00",
  "complete": true,
  "date": "2026-02-22",
  "creao_run_link": null,
@@ -4199,79 +4199,100 @@
    {
     "zone_id": "garnet-bowl",
     "recommended_line_id": "garnet-bowl-right-line",
-    "why": "Highest hazard count today; Garnet Bowl Right clears three active cliff zones."
+    "why": "Highest hazard count today; Garnet Bowl Right clears three active cliff zones.",
+    "line_note": null
    },
    {
     "zone_id": "ruby-bowl",
     "recommended_line_id": "shredder-line",
-    "why": "Shredder guides the long Ruby Bowl cliff band under 22 cm."
+    "why": "Shredder guides the long Ruby Bowl cliff band under 22 cm.",
+    "line_note": null
    },
    {
     "zone_id": "diamond-bowl",
     "recommended_line_id": "hobbs-right-line",
-    "why": "Hobbs (Right) guides two active Diamond cliffs under 22 cm and gusts."
+    "why": "Hobbs (Right) guides two active Diamond cliffs under 22 cm and gusts.",
+    "line_note": null
    }
   ],
   "cliff_guidance": [
    {
     "zone_id": "spankys-cliff-band-1",
-    "line_id": null,
-    "spoken": "Wind-loaded cliff band at the entrance; Garnet Bowl Right is loaded too."
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Wind-loaded cliff band at the entrance; Garnet Bowl Right is loaded too.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "garnet-cliff-band-1",
-    "line_id": null,
-    "spoken": "Garnet Bowl Center cliff band; Garnet Bowl Right sits under new snow."
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Garnet Bowl Center cliff band; Garnet Bowl Right sits under new snow.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "diamond-cliff-band-1",
-    "line_id": null,
-    "spoken": "Cliff band beside Wild Thing; Garnet Bowl Right remains wind loaded."
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Cliff band beside Wild Thing; Garnet Bowl Right remains wind loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "garnet-cliff-band-2",
     "line_id": null,
-    "spoken": "Garnet-Diamond cliff band today; Garnet Bowl Left is wind loaded too."
+    "spoken": "Garnet-Diamond cliff band today; Garnet Bowl Left is wind loaded too.",
+    "line_note": null
    },
    {
     "zone_id": "ruby-cliff-band-1",
-    "line_id": null,
-    "spoken": "Long Ruby Bowl cliff band under 22 cm; Shredder is wind loaded."
+    "line_id": "shredder-line",
+    "spoken": "Long Ruby Bowl cliff band under 22 cm; Shredder is wind loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "diamond-cliff-band-3",
     "line_id": null,
-    "spoken": "Cliff band beside Wild Thing, 22 cm new snow; Diamond Bowl loaded."
+    "spoken": "Cliff band beside Wild Thing, 22 cm new snow; Diamond Bowl loaded.",
+    "line_note": null
    },
    {
     "zone_id": "diamond-cliff-band-2",
-    "line_id": null,
-    "spoken": "Helter Skelter entrance cliff; Hobbs (Right) is wind loaded today."
+    "line_id": "hobbs-right-line",
+    "spoken": "Helter Skelter entrance cliff; Hobbs (Right) is wind loaded today.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "sapphire-cliff-band-1",
     "line_id": null,
-    "spoken": "Sapphire Chutes cliff band, 22 cm new snow; no listed line."
+    "spoken": "Sapphire Chutes cliff band, 22 cm new snow; no listed line.",
+    "line_note": null
    },
    {
     "zone_id": "spankys-cliff-band-2",
     "line_id": null,
-    "spoken": "Cliff band between Spanky's Chute and Shoulder; Garnet Bowl Left is loaded."
+    "spoken": "Cliff band between Spanky's Chute and Shoulder; Garnet Bowl Left is loaded.",
+    "line_note": null
    },
    {
     "zone_id": "diamond-cliff-band-4",
     "line_id": null,
-    "spoken": "Zut Zut cliff band, gusts 52 km/h; Diamond Bowl is loaded too."
+    "spoken": "Zut Zut cliff band, gusts 52 km/h; Diamond Bowl is loaded too.",
+    "line_note": null
    },
    {
     "zone_id": "diamond-cliff-band-5",
-    "line_id": null,
-    "spoken": "Bad Attitude cliff band, 22 cm new snow; Hobbs (Right) is loaded."
+    "line_id": "hobbs-right-line",
+    "spoken": "Bad Attitude cliff band, 22 cm new snow; Hobbs (Right) is loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
    },
    {
     "zone_id": "showcase-cliff-band-1",
     "line_id": null,
-    "spoken": "Showcase and Blackcomb Glacier cliff band; no listed line covers it today."
+    "spoken": "Showcase and Blackcomb Glacier cliff band; no listed line covers it today.",
+    "line_note": null
    }
   ],
   "hard_limits": [
