@@ -1,0 +1,241 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8813009,
+      50.0972874
+     ],
+     [
+      -122.8813028,
+      50.0972871
+     ],
+     [
+      -122.8814683,
+      50.0977126
+     ],
+     [
+      -122.8815865,
+      50.097873
+     ],
+     [
+      -122.8816531,
+      50.0979385
+     ],
+     [
+      -122.8817772,
+      50.0980333
+     ],
+     [
+      -122.8819778,
+      50.0981339
+     ],
+     [
+      -122.8822575,
+      50.0982265
+     ],
+     [
+      -122.8824688,
+      50.0983193
+     ]
+    ]
+   },
+   "properties": {
+    "id": "spankys-ladder-entrance-exit",
+    "from_zone": "spankys-ladder-entrance",
+    "name": "Exit to Rock Alley",
+    "exit_osm_id": "way/461517643",
+    "exit_difficulty": "intermediate",
+    "distance_to_run_m": 0,
+    "climb_m": 0,
+    "descent_m": 50
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8807729,
+      50.0969219
+     ],
+     [
+      -122.8810058,
+      50.0969155
+     ],
+     [
+      -122.8811832,
+      50.0970929
+     ],
+     [
+      -122.8812575,
+      50.097178
+     ],
+     [
+      -122.8812934,
+      50.0972631
+     ],
+     [
+      -122.8814683,
+      50.0977126
+     ],
+     [
+      -122.8815865,
+      50.097873
+     ],
+     [
+      -122.8816531,
+      50.0979385
+     ],
+     [
+      -122.8817772,
+      50.0980333
+     ],
+     [
+      -122.8819102,
+      50.0981
+     ]
+    ]
+   },
+   "properties": {
+    "id": "spankys-closure-1-exit",
+    "from_zone": "spankys-closure-1",
+    "name": "Exit to Rock Alley",
+    "exit_osm_id": "way/461517643",
+    "exit_difficulty": "intermediate",
+    "distance_to_run_m": 17,
+    "climb_m": -10,
+    "descent_m": 49
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8828464,
+      50.0994544
+     ],
+     [
+      -122.8831756,
+      50.0993735
+     ],
+     [
+      -122.8832211,
+      50.0994447
+     ],
+     [
+      -122.8833223,
+      50.0995835
+     ],
+     [
+      -122.883393,
+      50.0996822
+     ],
+     [
+      -122.8835007,
+      50.0998229
+     ],
+     [
+      -122.8835629,
+      50.0999062
+     ],
+     [
+      -122.8836207,
+      50.0999996
+     ],
+     [
+      -122.8836727,
+      50.1000963
+     ],
+     [
+      -122.8837639,
+      50.1002983
+     ],
+     [
+      -122.8838792,
+      50.100526
+     ],
+     [
+      -122.8839385,
+      50.1005999
+     ],
+     [
+      -122.8839579,
+      50.1006204
+     ]
+    ]
+   },
+   "properties": {
+    "id": "chimney-ladder-closure-1-exit",
+    "from_zone": "chimney-ladder-closure-1",
+    "name": "Exit to Crystal Traverse",
+    "exit_osm_id": "way/1315546515",
+    "exit_difficulty": "intermediate",
+    "distance_to_run_m": 25,
+    "climb_m": -9,
+    "descent_m": 34
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -122.8812023,
+      50.0986119
+     ],
+     [
+      -122.8818581,
+      50.0980739
+     ],
+     [
+      -122.8819778,
+      50.0981339
+     ],
+     [
+      -122.8822575,
+      50.0982265
+     ],
+     [
+      -122.8824877,
+      50.0983276
+     ],
+     [
+      -122.8826208,
+      50.0984091
+     ],
+     [
+      -122.8827312,
+      50.098503
+     ],
+     [
+      -122.8828173,
+      50.0986064
+     ],
+     [
+      -122.8829607,
+      50.0987777
+     ]
+    ]
+   },
+   "properties": {
+    "id": "spankys-cliff-band-1-exit",
+    "from_zone": "spankys-cliff-band-1",
+    "name": "Exit to Rock Alley",
+    "exit_osm_id": "way/461517643",
+    "exit_difficulty": "intermediate",
+    "distance_to_run_m": 76,
+    "climb_m": -30,
+    "descent_m": 28
+   }
+  }
+ ]
+}

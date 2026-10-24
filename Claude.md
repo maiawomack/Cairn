@@ -183,6 +183,7 @@ The demo must never wait minutes for Creao. Demo mode loads `hazard_map.cached.j
 ## Creao rules
 
 - Docs: https://community.creao.ai/CalHacks2026 (Quickstart, Agents, API Trigger, Workflows, Secrets). Read them before writing Creao code.
+- Read docs/creao/ before writing any Creao code. These are the source of truth for endpoints and request shapes.
 - Agents are created and saved by Maia in the agent.creao.ai UI. The API only runs agents.
 - Runs take minutes and do not stream. Use async runs with webhooks or polling, show progress in the UI, never hold a request open.
 - Every run spends credits. Never let an agent trigger itself, and never trigger runs in a loop.

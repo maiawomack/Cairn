@@ -4,6 +4,9 @@ import * as maplibregl from "maplibre-gl";
 // [lon, lat], midpoint of OSM way 461517641.
 const SPANKYS_LADDER = [-122.8811, 50.0977];
 
+// How many recent GPS fixes the fading skier trail shows.
+const TRAIL_LENGTH = 20;
+
 // AWS Terrain Tiles (Tilezen). Free, no key. Attribution lines below are the
 // ones that apply to Whistler from https://github.com/tilezen/joerd/blob/master/docs/attribution.md
 const DEM_SOURCE = {
@@ -38,6 +41,10 @@ const style = {
     runs: { type: "geojson", data: "/data/blackcomb_runs.geojson", attribution: OSM_ATTRIBUTION },
     // Built by build_hazard_zones.py from OSM cliffs and closures within 500 m of Spanky's.
     zones: { type: "geojson", data: "/data/hazard_zones.geojson" },
+    // Proposed by build_safe_exits.py, not yet reviewed.
+    exits: { type: "geojson", data: "/data/safe_exits.geojson" },
+    skier: { type: "geojson", data: emptyCollection() },
+    "skier-trail": { type: "geojson", data: emptyCollection() },
   },
   terrain: { source: "dem-terrain", exaggeration: 1.3 },
   sky: {
@@ -160,6 +167,41 @@ const HAZARD_LAYERS = [
   },
 ];
 
+const ROUTE_COLOR = "#5b3f8c";
+
+// Proposed safe exits, and the replayed skier: a dot with a fading trail of recent fixes.
+// Added after the hazard layers so they draw on top.
+const TOP_LAYERS = [
+  {
+    id: "exits",
+    type: "line",
+    source: "exits",
+    layout: { visibility: "none", "line-cap": "round" },
+    paint: { "line-color": ROUTE_COLOR, "line-width": 2.5, "line-opacity": 0.85 },
+  },
+  {
+    id: "skier-trail",
+    type: "circle",
+    source: "skier-trail",
+    paint: {
+      "circle-color": ROUTE_COLOR,
+      "circle-radius": ["interpolate", ["linear"], ["get", "age"], 0, 4, TRAIL_LENGTH, 1.5],
+      "circle-opacity": ["interpolate", ["linear"], ["get", "age"], 0, 0.7, TRAIL_LENGTH, 0],
+    },
+  },
+  {
+    id: "skier",
+    type: "circle",
+    source: "skier",
+    paint: {
+      "circle-color": ROUTE_COLOR,
+      "circle-radius": 7,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 2,
+    },
+  },
+];
+
 // Layers whose features show a label on hover, zones first so they win over runs.
 const ZONE_HOVER_LAYERS = ["zone-hatch", "expert-hatch"];
 const HOVER_LAYERS = [...ZONE_HOVER_LAYERS, "runs-hover", "lifts-hover"];
@@ -168,7 +210,12 @@ const LAYER_GROUPS = {
   runs: ["runs", "runs-hover"],
   lifts: ["lifts", "lifts-hover"],
   hazards: HAZARD_LAYERS.map((layer) => layer.id),
+  exits: ["exits"],
 };
+
+function emptyCollection() {
+  return { type: "FeatureCollection", features: [] };
+}
 
 const map = new maplibregl.Map({
   container: "map",
@@ -210,7 +257,61 @@ map.on("style.load", () => {
   for (const layer of HAZARD_LAYERS) {
     map.addLayer(layer, "runs-hover");
   }
+  for (const layer of TOP_LAYERS) {
+    map.addLayer(layer);
+  }
+  // ?replay=scenario_2&speed=4 starts a replay on load, for demos.
+  const params = new URLSearchParams(location.search);
+  if (params.has("replay")) startReplay(params.get("replay"), Number(params.get("speed")) || 1);
 });
+
+// Replay a scenario track streamed by the backend (Server Sent Events).
+let replaySource = null;
+
+function startReplay(scenarioId, speed = 1) {
+  if (replaySource) replaySource.close();
+  const trail = [];
+  setReplayButton(scenarioId);
+
+  replaySource = new EventSource(`/api/replay/${encodeURIComponent(scenarioId)}?speed=${speed}`);
+  replaySource.onmessage = (event) => {
+    const { lat, lon } = JSON.parse(event.data).data;
+    trail.unshift([lon, lat]);
+    trail.length = Math.min(trail.length, TRAIL_LENGTH + 1);
+    map.getSource("skier").setData(pointCollection([trail[0]]));
+    map.getSource("skier-trail").setData(pointCollection(trail.slice(1)));
+  };
+  // The server sends "end" when the track is done; close so EventSource doesn't reconnect and replay again.
+  replaySource.addEventListener("end", () => {
+    replaySource.close();
+    setReplayButton(null);
+  });
+  replaySource.onerror = () => {
+    replaySource.close();
+    setReplayButton(null);
+  };
+}
+
+function pointCollection(coordinates) {
+  return {
+    type: "FeatureCollection",
+    features: coordinates.map((coordinate, age) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: coordinate },
+      properties: { age: age + 1 },
+    })),
+  };
+}
+
+function setReplayButton(playingId) {
+  for (const button of document.querySelectorAll("[data-scenario]")) {
+    button.classList.toggle("playing", button.dataset.scenario === playingId);
+  }
+}
+
+for (const button of document.querySelectorAll("[data-scenario]")) {
+  button.addEventListener("click", () => startReplay(button.dataset.scenario));
+}
 
 new maplibregl.Marker({ element: spankysMarker(), anchor: "left", offset: [-8, 0] })
   .setLngLat(SPANKYS_LADDER)

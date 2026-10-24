@@ -19,6 +19,7 @@
       --paper: #f3ede0;
       --slate: #3b4250;
       --hazard: #b23a3a;
+      --route: #5b3f8c;
     }
     html, body, #map { height: 100%; margin: 0; background: var(--paper); }
     body { font-family: Georgia, "Iowan Old Style", serif; color: var(--slate); }
@@ -30,6 +31,12 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
     .layer-toggle label { display: block; cursor: pointer; }
+    .layer-toggle .replay { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(59, 66, 80, 0.2); }
+    .layer-toggle button {
+      font: inherit; font-size: 12px; color: var(--slate); cursor: pointer;
+      background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 1px 6px;
+    }
+    .layer-toggle button.playing { border-color: var(--route); color: var(--route); }
 
     .spankys-marker { display: flex; align-items: center; gap: 6px; pointer-events: none; }
     .spankys-marker .dot {
@@ -54,6 +61,12 @@
     <label><input type="checkbox" data-group="runs" checked> Runs</label>
     <label><input type="checkbox" data-group="lifts"> Lifts</label>
     <label><input type="checkbox" data-group="hazards" checked> Hazards</label>
+    <label><input type="checkbox" data-group="exits"> Safe exits (proposed)</label>
+    <div class="replay">
+      Replay
+      <button type="button" data-scenario="scenario_1">Scenario 1</button>
+      <button type="button" data-scenario="scenario_2">Scenario 2</button>
+    </div>
   </div>
   <script type="module" src="/static/app.js"></script>
 </body>

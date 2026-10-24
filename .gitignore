@@ -21,3 +21,5 @@ tmp/
 .DS_Store
 .vscode/
 .idea/
+# DEM tiles downloaded by backend/dem.py
+data/dem_cache/
