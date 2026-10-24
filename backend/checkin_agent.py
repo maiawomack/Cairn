@@ -59,10 +59,17 @@ def unsafe_agent_config(agent_config, allowed_tool_ids=None):
 
 
 def _fetch_version_config(agent_id, version_id):
-    """GET the agent version's config (blocking; run in a thread). Raises on any problem."""
+    """GET the agent's config (blocking; run in a thread). Raises on any problem.
+
+    Verified 2026-10-24: GET /v1/agents/{id} returns the current version as {"config": {"tools":
+    [{"id"}], "system_tools": {...}}, "version": {...}}, and /v1/agents/{id}/versions/{version_id}
+    returns the same shape. Without the /v1 prefix both are 404. The version of this session
+    is read when session_ready names one, otherwise the agent's current version.
+    """
+    path = f"/v1/agents/{agent_id}" + (f"/versions/{version_id}" if version_id else "")
     request = urllib.request.Request(
-        f"https://api.cartesia.ai/agents/{agent_id}/versions/{version_id}",
-        headers={"X-API-Key": os.environ["CARTESIA_API_KEY"], "Cartesia-Version": config.CARTESIA_VERSION},
+        f"https://api.cartesia.ai{path}",
+        headers={"Authorization": f"Bearer {os.environ['CARTESIA_API_KEY']}", "Cartesia-Version": config.CARTESIA_VERSION},
     )
     with urllib.request.urlopen(request, timeout=10) as response:
         body = json.load(response)
