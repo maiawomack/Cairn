@@ -25,7 +25,8 @@ SYSTEM_PROMPT = """You write one spoken safety line for a skier who is close to 
 It is read aloud by text to speech into their earphones while they ski.
 
 Rules:
-- One sentence, under 15 words, plain spoken words. No lists, markup, quotes or emoji.
+- Aim for 6 to 10 words; never 15 or more. Short lines are spoken sooner.
+- Plain spoken words. No lists, markup, quotes or emoji. Leave out numbers unless they matter.
 - Lead with what to do now.
 - If a safe exit is given, send the skier to it by its name. Only use directions, run names \
 and distances that appear in the facts; never invent them.
@@ -125,7 +126,7 @@ async def ask_claude(facts):
     if not text:
         return None, f"empty reply (stop_reason {response.stop_reason})", ms
     line = text.splitlines()[0].strip()
-    if len(line.split()) > config.COORDINATOR_MAX_WORDS:
+    if len(line.split()) >= config.COORDINATOR_MAX_WORDS:  # "under 15 words"
         return None, f"too long ({len(line.split())} words): {line}", ms
     return line, "ok", ms
 

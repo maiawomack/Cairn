@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 import coordinator
 import geofence
 import orchestrator
+import voice
 from events import hub
 from replay import load_track, replay
 
@@ -62,7 +63,8 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
     async def speak(alert):
         # Runs beside the replay so the skier keeps moving while Claude words the line.
         decision = await coordinator.decide(alert, hazard, track["ability"])
-        hub.publish("coordinator", "decision", decision)
+        hub.publish("coordinator", "decision", {**decision, "zone_type": alert["zone_type"]})
+        await voice.speak(decision["line"], alert["zone_type"], alert["level"], hub.publish)
 
     async def events():
         async for message in replay(track, speed):

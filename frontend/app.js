@@ -367,6 +367,7 @@ for (const checkbox of document.querySelectorAll(".layer-toggle input")) {
 // ---- Creao agents panel: run button, org chart, conditions, log ----
 
 const LOG_LENGTH = 8;
+const PAGE_OPENED_AT = Date.now();
 const runButton = document.getElementById("run-agents");
 
 runButton.addEventListener("click", async () => {
@@ -389,8 +390,88 @@ agentEvents.onmessage = (event) => {
     runButton.disabled = message.type === "started";
     if (message.type === "finished") loadConditions();
   }
-  if (message.type !== "output") addLogLine(message);
+  // History replays on page load; only show and speak warnings that happen now.
+  const fresh = Date.parse(message.time) > PAGE_OPENED_AT - 2000;
+  if (fresh && role === "coordinator" && message.type === "decision") showBanner(message.data);
+  if (fresh && role === "voice") handleVoice(message);
+  const liveOnly = role === "voice" && ["start", "chunk", "end"].includes(message.type);
+  if (message.type !== "output" && !liveOnly) addLogLine(message);
 };
+
+// ---- Spoken warnings: banner + streamed Sonic audio ----
+
+const BANNER_SECONDS = 7;
+let bannerTimer = null;
+
+function showBanner(decision) {
+  const banner = document.getElementById("spoken-banner");
+  const isWarning = decision.level === "warning";
+  banner.className = `spoken-banner${isWarning ? " warning" : ""}`;
+  const via = Object.assign(document.createElement("small"), {
+    textContent: `${decision.zone_id} · words by ${decision.path.replace("_", " ")}`,
+  });
+  banner.replaceChildren(decision.line, via);
+  banner.hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => {
+    banner.classList.add("fading");
+    setTimeout(() => { banner.hidden = true; }, 600);
+  }, BANNER_SECONDS * 1000);
+}
+
+// Browsers only allow audio after a click, so the context starts on the first one.
+let audioContext = null;
+document.addEventListener("click", () => {
+  audioContext ??= new AudioContext();
+  audioContext.resume();
+});
+
+const utterances = {}; // utterance id -> { sampleRate, nextTime, leftover }
+
+function handleVoice(message) {
+  const { type, data } = message;
+  if (type === "start") {
+    utterances[data.utterance] = { sampleRate: data.sample_rate, nextTime: 0, leftover: null };
+  } else if (type === "chunk") {
+    playChunk(utterances[data.utterance], data.audio);
+  } else if (type === "end") {
+    delete utterances[data.utterance];
+  } else if (type === "unavailable" || type === "error") {
+    // Never silent: speak the line with the browser's own voice instead.
+    speakWithBrowser(data.line);
+  }
+}
+
+function playChunk(utterance, base64) {
+  if (!utterance || !audioContext) return;
+  let bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  if (utterance.leftover !== null) {
+    // A 16 bit sample can straddle two chunks.
+    bytes = Uint8Array.from([utterance.leftover, ...bytes]);
+    utterance.leftover = null;
+  }
+  if (bytes.length % 2) {
+    utterance.leftover = bytes[bytes.length - 1];
+    bytes = bytes.subarray(0, bytes.length - 1);
+  }
+  const samples = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2);
+  if (!samples.length) return;
+  const buffer = audioContext.createBuffer(1, samples.length, utterance.sampleRate);
+  const channel = buffer.getChannelData(0);
+  for (let i = 0; i < samples.length; i++) channel[i] = samples[i] / 32768;
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioContext.destination);
+  // Queue each chunk right after the previous one so playback is gapless.
+  const startAt = Math.max(audioContext.currentTime + 0.02, utterance.nextTime);
+  source.start(startAt);
+  utterance.nextTime = startAt + buffer.duration;
+}
+
+function speakWithBrowser(line) {
+  if (!line || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(line));
+}
 
 function updateOrgNode(node, message) {
   const { type, data } = message;
@@ -412,7 +493,9 @@ function addLogLine(message) {
   const time = document.createElement("time");
   time.textContent = new Date(message.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const data = message.data || {};
-  const detail = data.line
+  const detail = data.status
+    ? `${data.status}${data.first_audio_ms != null ? `, first audio ${data.first_audio_ms} ms` : ""}${data.reason ? `: ${data.reason}` : ""}`
+    : data.line
     ? `"${data.line}" (${data.path}${data.path === "claude" ? `, ${data.claude_ms} ms` : `: ${data.claude_reason}`})`
     : data.zone_id
       ? `${data.zone_id} ${data.distance_m} m (${data.reason}, ${data.speed_kmh} km/h)`

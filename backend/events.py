@@ -18,7 +18,8 @@ class EventHub:
         self._history = deque(maxlen=HISTORY_SIZE)
         self._subscribers = []  # (event loop, queue)
 
-    def publish(self, source, type_, data=None):
+    def publish(self, source, type_, data=None, history=True):
+        """history=False for live-only messages (audio chunks) that a late browser shouldn't replay."""
         message = {
             "from": source,
             "type": type_,
@@ -26,7 +27,8 @@ class EventHub:
             "time": datetime.now(timezone.utc).isoformat(),
         }
         with self._lock:
-            self._history.append(message)
+            if history:
+                self._history.append(message)
             subscribers = list(self._subscribers)
         for loop, queue in subscribers:
             loop.call_soon_threadsafe(queue.put_nowait, message)

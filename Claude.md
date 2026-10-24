@@ -135,6 +135,8 @@ Geofence (`backend/geofence.py`, tuning in `backend/config.py`): a least squares
 
 Coordinator (`backend/coordinator.py`): on each geofence alert, Claude (`CLAUDE_MODEL`, default `claude-haiku-5-5`, effort low, thinking off, no retries) gets the zone hint, the Route Planner's reroute for the ability, distance and speed, and returns one spoken line under 15 words. If it hasn't answered in 1.5 s, or errors, refuses, or returns an empty or too long line, the Route Planner's `spoken` line is used, and without a plan a fixed template from the zone type and its safe exit. Every decision is posted to the dashboard log as `coordinator` / `decision` with `path` (claude | route_planner | template) and `claude_reason`.
 
+Voice (`backend/voice.py`): the coordinator's line streams through Sonic (`sonic-3.6`, cartesia SDK 4.2.0, `cartesia-version` header) over the WebSocket TTS API as raw `pcm_s16le` at 24 kHz, relayed to the dashboard as `voice` / `chunk` messages (live only, not kept in the log history) and played gaplessly with Web Audio. Cliff warnings: alert sentences firm and quick (`determined`, speed 1.2, volume 1.4), the final reroute sentence calm (`calm`, speed 1.0); everything else calm. Styles live in `config.VOICE_STYLES`. If Cartesia is not configured or errors, the dashboard speaks the line with the browser's speech synthesis, so a warning is never silent. The banner on the map shows the exact words from the coordinator decision.
+
 Agent messages on the dashboard log: `{ "from": "skier | terrain | coordinator | voice | creao:<role>", "type": "string", "data": {}, "time": "ISO timestamp" }`.
 
 Units are metric (meters, km/h).

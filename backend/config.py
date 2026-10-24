@@ -66,5 +66,19 @@ def confirm_fixes(zone_type="cliff"):
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL") or "claude-haiku-5-5"
 # If Claude hasn't answered by then, speak the Route Planner's line (or a template).
 COORDINATOR_TIMEOUT_S = _number("COORDINATOR_TIMEOUT_S", 1.5)
-# Longest spoken line we accept from Claude.
+# Claude's line must be under this many words, or the fallback is used.
 COORDINATOR_MAX_WORDS = int(_number("COORDINATOR_MAX_WORDS", 15))
+
+
+# ---- Voice (Cartesia Sonic over WebSocket) ----
+
+CARTESIA_TTS_MODEL = os.environ.get("CARTESIA_TTS_MODEL") or "sonic-3.6"
+CARTESIA_VERSION = os.environ.get("CARTESIA_VERSION") or "2026-08-14"
+# Raw PCM the browser decodes itself; 16 bit at 24 kHz keeps each streamed chunk small.
+VOICE_SAMPLE_RATE = 24000
+VOICE_ENCODING = "pcm_s16le"
+# generation_config per style (Sonic treats these as guidance). speed 0.6-1.5, volume 0.5-2.0.
+VOICE_STYLES = {
+    "firm": {"speed": 1.2, "volume": 1.4, "emotion": "determined"},  # cliff alerts: firm and quick
+    "calm": {"speed": 1.0, "volume": 1.1, "emotion": "calm"},  # reroutes and everything else
+}
