@@ -5,7 +5,7 @@
 For each fix the skier's position, speed and heading come from a straight line fitted
 through the last few fixes (no lag, and a single jumpy point barely moves it). A zone
 that is active and applies to the skier's ability warns when the skier is inside it,
-within GEOFENCE_NEAR_M of it, or heading so that the path ahead reaches it within the
+within a near distance of it, or heading so that the path ahead reaches it within the
 speed scaled warning distance. Tuning lives in config.py.
 
 Hard rule (CLAUDE.md): a cliff zone hit always warns. This module decides that a zone
@@ -156,7 +156,7 @@ class Geofence:
         distance = distance_to_ring(position, zone["ring"])
         if distance == 0:
             return {"reason": "inside", "distance_m": 0.0, "ahead_m": 0.0}
-        if distance <= config.GEOFENCE_NEAR_M:
+        if distance <= config.near_m(zone["type"]):
             return {"reason": "near", "distance_m": distance, "ahead_m": None}
         if distance > warn_m or heading is None or speed < 0.5:
             return None
@@ -165,7 +165,7 @@ class Geofence:
         step = PATH_STEP_M
         while step <= warn_m:
             ahead = (position[0] + ux * step, position[1] + uy * step)
-            if distance_to_ring(ahead, zone["ring"]) <= config.GEOFENCE_PATH_MARGIN_M:
+            if distance_to_ring(ahead, zone["ring"]) <= config.path_margin_m(zone["type"]):
                 return {"reason": "heading", "distance_m": distance, "ahead_m": step}
             step += PATH_STEP_M
         return None

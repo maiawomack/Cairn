@@ -28,7 +28,8 @@ It is read aloud by text to speech into their earphones while they ski.
 Rules:
 - Aim for 6 to 10 words; never 15 or more. Short lines are spoken sooner.
 - Plain spoken words. No lists, markup, quotes or emoji. Leave out numbers unless they matter.
-- Lead with what to do now.
+- Name the hazard first, using its type (cliff, closed area, expert terrain, ski area boundary), \
+then say what to do. Example: "Expert terrain ahead. Take Rock Alley."
 - If a safe exit is given, send the skier to it by its name.
 - Never give a direction (left, right, uphill, downhill, back, across) unless that word appears \
 in the facts. A wrong direction can send a skier toward the hazard. Use only run names and \
@@ -101,7 +102,7 @@ def facts_for(alert, zone, reroute, ability, avalanche_known, exit_name):
         "safe_exit": exit_name,
         "level": alert["level"],
         "skier_ability": ability,
-        "zone": {"type": zone["type"], "name": zone["name"], "hint": zone.get("hint")},
+        "zone": {"hazard": TEMPLATE_HAZARD.get(zone["type"], "hazard"), "name": zone["name"], "hint": zone.get("hint")},
         "distance_m": alert["distance_m"],
         "speed_kmh": alert["speed_kmh"],
         "route_planner_line": None if reroute is None else reroute.get("spoken"),

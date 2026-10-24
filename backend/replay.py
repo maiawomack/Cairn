@@ -23,16 +23,22 @@ def load_track(scenario_id):
 
 
 async def replay(track, speed=1.0):
-    """Yield one skier position message per GPS fix, spaced like the real track (divided by speed)."""
+    """Yield one skier position message per GPS fix, spaced like the real track (divided by speed).
+
+    speed is a number, or a function of track time t that is asked before every fix,
+    so playback speed can change during the replay.
+    """
+    speed_at = speed if callable(speed) else (lambda t: speed)
     previous_t = None
     for point in track["points"]:
+        current = speed_at(point["t"])
         if previous_t is not None:
-            await asyncio.sleep((point["t"] - previous_t) / speed)
+            await asyncio.sleep((point["t"] - previous_t) / current)
         previous_t = point["t"]
         yield {
             "from": "skier",
             "type": "position",
-            "data": {"scenario": track["id"], **point},
+            "data": {"scenario": track["id"], **point, "playback_speed": current},
             "time": datetime.now(timezone.utc).isoformat(),
         }
 

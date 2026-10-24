@@ -37,6 +37,13 @@
       background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 1px 6px;
     }
     .layer-toggle button.playing { border-color: var(--route); color: var(--route); }
+    .layer-toggle .replay-speed { margin-top: 4px; }
+    .playback-speed { font-size: 11px; color: var(--hazard); margin-left: 4px; }
+    .target-label {
+      pointer-events: none; padding: 3px 8px; border-radius: 4px; max-width: 220px;
+      background: rgba(178, 58, 58, 0.92); color: #fff; font-size: 13px; font-style: italic;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
 
     .spankys-marker { display: flex; align-items: center; gap: 6px; pointer-events: none; }
     .spankys-marker .dot {
@@ -109,6 +116,13 @@
       Replay
       <button type="button" data-scenario="scenario_1">Scenario 1</button>
       <button type="button" data-scenario="scenario_2">Scenario 2</button>
+    </div>
+    <div class="replay-speed">
+      Speed
+      <button type="button" data-speed="1" class="playing">1x</button>
+      <button type="button" data-speed="2">2x</button>
+      <button type="button" data-speed="4">4x</button>
+      <span id="playback-speed" class="playback-speed"></span>
     </div>
   </div>
   <div class="agents-panel">

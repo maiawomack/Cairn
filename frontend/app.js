@@ -173,6 +173,14 @@ const ROUTE_COLOR = "#5b3f8c";
 // Added after the hazard layers so they draw on top.
 const TOP_LAYERS = [
   {
+    // Pulses the scenario's target zone when a replay starts (pulseTargetZone).
+    id: "target-pulse",
+    type: "line",
+    source: "zones",
+    filter: ["==", ["get", "id"], ""],
+    paint: { "line-color": HAZARD_COLOR, "line-width": 0, "line-opacity": 0.9 },
+  },
+  {
     id: "exits",
     type: "line",
     source: "exits",
@@ -262,34 +270,106 @@ map.on("style.load", () => {
   }
   // ?replay=scenario_2&speed=4 starts a replay on load, for demos.
   const params = new URLSearchParams(location.search);
-  if (params.has("replay")) startReplay(params.get("replay"), Number(params.get("speed")) || 1);
+  if (params.has("replay")) {
+    chosenSpeed = Number(params.get("speed")) || 1;
+    startReplay(params.get("replay"), chosenSpeed);
+  }
 });
 
 // Replay a scenario track streamed by the backend (Server Sent Events).
 let replaySource = null;
+let replaySession = null;
+let chosenSpeed = 1;
 
-function startReplay(scenarioId, speed = 1) {
+// Follow cam: zoomed in on the Spanky's area, keeping the default tilt and bearing.
+const FOLLOW_ZOOM = 15.8;
+const CAMERA_SMOOTHING = 0.35; // 0..1, how far the camera moves toward each new GPS fix
+const TARGET_PULSE_SECONDS = 6;
+
+function startReplay(scenarioId, speed = chosenSpeed) {
   if (replaySource) replaySource.close();
   const trail = [];
+  let camera = null;
   setReplayButton(scenarioId);
+  setSpeedButtons(speed);
 
   replaySource = new EventSource(`/api/replay/${encodeURIComponent(scenarioId)}?speed=${speed}`);
+  replaySource.addEventListener("session", (event) => {
+    const session = JSON.parse(event.data);
+    replaySession = session.session;
+    if (session.target_zone) pulseTargetZone(session.target_zone);
+  });
   replaySource.onmessage = (event) => {
-    const { lat, lon } = JSON.parse(event.data).data;
+    const { lat, lon, playback_speed: playing } = JSON.parse(event.data).data;
     trail.unshift([lon, lat]);
     trail.length = Math.min(trail.length, TRAIL_LENGTH + 1);
     map.getSource("skier").setData(pointCollection([trail[0]]));
     map.getSource("skier-trail").setData(pointCollection(trail.slice(1)));
-  };
+    showPlaybackSpeed(playing);
+
+    // Smooth the camera so GPS noise doesn't shake the view.
+    camera = camera
+      ? [camera[0] + (lon - camera[0]) * CAMERA_SMOOTHING, camera[1] + (lat - camera[1]) * CAMERA_SMOOTHING]
+      : [lon, lat];
+    map.easeTo({ center: camera, zoom: FOLLOW_ZOOM, duration: 1000 / playing, easing: (t) => t });  };
   // The server sends "end" when the track is done; close so EventSource doesn't reconnect and replay again.
-  replaySource.addEventListener("end", () => {
-    replaySource.close();
-    setReplayButton(null);
+  replaySource.addEventListener("end", stopReplay);
+  replaySource.onerror = stopReplay;
+}
+
+function stopReplay() {
+  replaySource?.close();
+  replaySession = null;
+  setReplayButton(null);
+  showPlaybackSpeed(null);
+}
+
+// Speed buttons apply to the running replay and to the next one.
+for (const button of document.querySelectorAll("[data-speed]")) {
+  button.addEventListener("click", () => {
+    chosenSpeed = Number(button.dataset.speed);
+    setSpeedButtons(chosenSpeed);
+    if (replaySession) fetch(`/api/replay/session/${replaySession}/speed?speed=${chosenSpeed}`, { method: "POST" });
   });
-  replaySource.onerror = () => {
-    replaySource.close();
-    setReplayButton(null);
+}
+
+function setSpeedButtons(speed) {
+  for (const button of document.querySelectorAll("[data-speed]")) {
+    button.classList.toggle("playing", Number(button.dataset.speed) === speed);
+  }
+}
+
+function showPlaybackSpeed(playing) {
+  const label = document.getElementById("playback-speed");
+  // The server drops to 1x around each warning so the spoken line plays at real speed.
+  label.textContent = playing == null ? "" : playing < chosenSpeed ? "1x near warning" : "";
+}
+
+// When a scenario starts, pulse its target zone and label it by name.
+async function pulseTargetZone(target) {
+  map.setFilter("target-pulse", ["==", ["get", "id"], target.id]);
+  const zones = await (await fetch("/data/hazard_zones.geojson")).json();
+  const ring = zones.features.find((f) => f.properties.id === target.id)?.geometry.coordinates[0] || [];
+  let label = null;
+  if (ring.length) {
+    const center = [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length];
+    const el = Object.assign(document.createElement("div"), { className: "target-label", textContent: target.name });
+    label = new maplibregl.Marker({ element: el }).setLngLat(center).addTo(map);
+  }
+  const started = performance.now();
+  const frame = (now) => {
+    const t = (now - started) / 1000;
+    if (t > TARGET_PULSE_SECONDS) {
+      map.setPaintProperty("target-pulse", "line-width", 0);
+      label?.remove();
+      return;
+    }
+    const wave = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+    map.setPaintProperty("target-pulse", "line-width", 2 + 5 * wave);
+    map.setPaintProperty("target-pulse", "line-opacity", 0.35 + 0.55 * wave);
+    requestAnimationFrame(frame);
   };
+  requestAnimationFrame(frame);
 }
 
 function pointCollection(coordinates) {

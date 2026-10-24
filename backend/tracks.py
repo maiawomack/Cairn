@@ -19,6 +19,11 @@ RUNS_FILE = DATA_DIR / "blackcomb_runs.geojson"
 OSM_HAZARDS_FILE = DATA_DIR / "osm_hazards.geojson"
 
 RATE_HZ = 1
+
+# Demo trimming: replays start this long before the first warning, and a track
+# that never warns (scenario 1) is cut to its first QUIET_S seconds.
+LEAD_IN_S = 25
+QUIET_S = 30
 STEP_S = 0.1  # internal simulation step
 
 # GPS error is correlated from one fix to the next, like a real receiver's drift.
@@ -170,15 +175,35 @@ def scenario_2():
     }
 
 
+def trim(track, start_s, end_s=None):
+    """Keep fixes from start_s (to end_s), with times re-zeroed so the replay starts there."""
+    def window(fixes):
+        kept = [f for f in fixes if f["t"] >= start_s and (end_s is None or f["t"] <= end_s)]
+        return [{**f, "t": round(f["t"] - start_s, 1)} for f in kept]
+    return {**track, "points": window(track["points"]), "truth": window(track["truth"]),
+            "trimmed_from_s": start_s}
+
+
+def trim_for_demo(track):
+    """Start LEAD_IN_S before the first geofence warning; a track that never warns keeps its first QUIET_S."""
+    import geofence  # the current hazard map decides where the first warning is
+
+    alerts = geofence.run_track(track, geofence.load_hazard_map())
+    if not alerts:
+        return trim(track, 0, QUIET_S)
+    return trim(track, max(0, alerts[0]["t"] - LEAD_IN_S))
+
+
 def main():
     TRACKS_DIR.mkdir(exist_ok=True)
     for build in (scenario_1, scenario_2):
-        track = build()
+        track = trim_for_demo(build())
         path = TRACKS_DIR / f"{track['id']}.json"
         path.write_text(json.dumps(track, indent=1))
         speeds = [p["speed_kmh"] for p in track["truth"]]
         print(f"wrote {path.relative_to(DATA_DIR.parent)}: {len(track['points'])} fixes, "
-              f"{track['truth'][-1]['t']:.0f} s, speed {min(speeds):.0f}-{max(speeds):.0f} km/h")
+              f"{track['truth'][-1]['t']:.0f} s (from t={track['trimmed_from_s']} s of the full run), "
+              f"speed {min(speeds):.0f}-{max(speeds):.0f} km/h")
 
 
 if __name__ == "__main__":
