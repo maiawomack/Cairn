@@ -540,14 +540,18 @@ runButton.addEventListener("click", async () => {
 const agentEvents = new EventSource("/api/events");
 agentEvents.onmessage = (event) => {
   const message = JSON.parse(event.data);
+  // Creao messages are "creao:<role>"; our code's are "terrain" (geofence), "coordinator" and "voice".
+  // "terrain" is also a Creao role, so tell them apart by the prefix.
+  const isCreao = message.from.startsWith("creao:");
   const role = message.from.replace("creao:", "");
-  if (role in agentState) updateOrgBox(role, message);
-  if (role === "orchestrator") {
+  // History replays on page load; only light boxes, show and speak what happens now.
+  const fresh = Date.parse(message.time) > PAGE_OPENED_AT - 2000;
+  if (isCreao && role in agentState) updateOrgBox(role, message);
+  if (isCreao && role === "orchestrator") {
     runButton.disabled = message.type === "started";
     if (message.type === "finished") loadConditions();
   }
-  // History replays on page load; only show and speak warnings that happen now.
-  const fresh = Date.parse(message.time) > PAGE_OPENED_AT - 2000;
+  if (!isCreao) updateCodeBox(message, fresh);
   if (fresh && role === "coordinator" && message.type === "decision") {
     showBanner(message.data);
     showSafeLine(message.data);
@@ -723,8 +727,107 @@ function updateOrgBox(role, message) {
   if (type === "failed") setOrgBox(role, "failed", `failed: ${(data.error || "").slice(0, 40)}`);
 }
 
+// ---- Our code's lane: Geofence -> Coordinator (Claude) -> Voice (Sonic) ----
+// State comes only from the in-memory event history (and live messages), nothing on disk,
+// so after a server restart the boxes read "no alerts yet".
+
+const CODE_TITLES = { geofence: "Geofence", coordinator: "Coordinator (Claude)", voice: "Voice (Sonic)" };
+const GEOFENCE_TYPES = ["briefing", "guidance", "warning", "on_line"];
+const VOICE_DONE_TYPES = ["spoken", "unavailable", "error"];
+const MIN_LIT_MS = 700; // a box stays lit at least this long, so a fast step is still visible
+const codeState = { geofence: null, coordinator: null, voice: null }; // latest event per box
+const lit = {};
+
+function codeBox(name) {
+  return document.querySelector(`.org-box[data-code="${name}"]`);
+}
+
+function lightCode(name, on) {
+  const box = codeBox(name);
+  const state = (lit[name] ??= { since: 0, timer: null });
+  clearTimeout(state.timer);
+  if (on) {
+    state.since = performance.now();
+    box.classList.add("running");
+    return;
+  }
+  const wait = Math.max(0, MIN_LIT_MS - (performance.now() - state.since));
+  state.timer = setTimeout(() => box.classList.remove("running"), wait);
+}
+
+function codeRunText(name) {
+  const event = codeState[name];
+  if (!event) return "no alerts yet";
+  const when = new Date(event.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const data = event.data;
+  if (name === "geofence") return `last alert ${when} · ${event.type}`;
+  if (name === "coordinator") {
+    const claude = data.claude_ms ? `Claude ${data.claude_ms} ms` : "no Claude call";
+    return `last alert ${when} · ${claude}${data.path === "claude" ? "" : ` · ${data.path}`}`;
+  }
+  return `last alert ${when} · ${data.status}`;
+}
+
+function setCodeEvent(name, message) {
+  codeState[name] = message;
+  codeBox(name).querySelector(".org-run").textContent = codeRunText(name);
+}
+
+function updateCodeBox(message, fresh) {
+  const { from, type } = message;
+  if (from === "terrain" && GEOFENCE_TYPES.includes(type)) {
+    setCodeEvent("geofence", message);
+    if (fresh) {
+      lightCode("geofence", true);
+      lightCode("geofence", false); // lit for the minimum time
+      lightCode("coordinator", true); // working from the alert's arrival until its decision
+    }
+  } else if (from === "coordinator" && type === "decision") {
+    setCodeEvent("coordinator", message);
+    if (fresh) lightCode("coordinator", false);
+  } else if (from === "voice") {
+    if (type === "start" && fresh) lightCode("voice", true);
+    if (type === "end" && fresh) lightCode("voice", false);
+    if (VOICE_DONE_TYPES.includes(type)) {
+      setCodeEvent("voice", message);
+      if (fresh) {
+        if (type !== "spoken") lightCode("voice", true); // unavailable / error: no stream, a short pulse
+        lightCode("voice", false);
+      }
+    }
+  }
+}
+
+for (const name of Object.keys(CODE_TITLES)) codeBox(name).querySelector(".org-run").textContent = codeRunText(name);
+
+for (const box of document.querySelectorAll(".org-box[data-code]")) {
+  box.addEventListener("click", () => {
+    const name = box.dataset.code;
+    const event = codeState[name];
+    document.getElementById("agent-output-title").textContent = CODE_TITLES[name];
+    document.getElementById("agent-output-meta").textContent = event
+      ? `${event.from} ${event.type} · ${new Date(event.time).toLocaleString()}`
+      : codeRunText(name);
+    document.getElementById("agent-output-body").textContent = event ? JSON.stringify(event.data, null, 2) : "No alerts yet.";
+    outputDialog.showModal();
+  });
+}
+
+// Collapse the card down to its header (default open).
+const orgCard = document.getElementById("org-card");
+const orgToggle = document.getElementById("org-toggle");
+orgToggle.addEventListener("click", () => {
+  const collapsed = orgCard.classList.toggle("collapsed");
+  orgToggle.setAttribute("aria-expanded", String(!collapsed));
+  orgToggle.textContent = collapsed ? "▸" : "▾";
+  orgToggle.title = collapsed ? "Expand" : "Collapse";
+});
+
 async function loadAgentState() {
   const state = await (await fetch("/api/agents/state", { cache: "no-store" })).json();
+  for (const [name, event] of Object.entries(state.code || {})) {
+    if (event) setCodeEvent(name, event);
+  }
   for (const [role, { last_run: lastRun, output }] of Object.entries(state.roles)) {
     agentState[role] = { lastRun, output };
     setOrgBox(role, lastRun ? "done" : "", lastRunText(role));

@@ -21,6 +21,7 @@
       --hazard: #b23a3a;
       --route: #5b3f8c;
       --contour: #9a7b5a;
+      --code: #3f7f78; /* muted teal for our code */
     }
     html, body, #map { height: 100%; margin: 0; background: var(--paper); }
     body { font-family: Georgia, "Iowan Old Style", serif; color: var(--slate); }
@@ -86,55 +87,75 @@
       background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 2px 8px;
     }
     .agents-panel button:disabled { opacity: 0.5; cursor: default; }
-    /* Org chart: a field notebook card on the map, contour brown lines, purple when an agent runs. */
+    /* Org chart: a field notebook card on the map. Creao agents purple, our code muted teal; a box that
+       is working gets a thicker border and a pulse, so the cue is not the color alone. */
     .org-card {
-      position: absolute; left: 12px; bottom: 34px; z-index: 1; width: 400px;
+      position: absolute; left: 12px; bottom: 34px; z-index: 1; width: 622px; max-width: calc(100% - 24px);
       background: rgba(243, 237, 224, 0.95); border: 1px solid var(--contour); border-radius: 6px;
       padding: 10px 14px 12px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
     }
     .org-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-    .org-header h2 { margin: 0; font-size: 15px; font-weight: normal; font-style: italic; letter-spacing: 0.02em; }
+    .org-card.collapsed .org-header { margin-bottom: 0; }
+    .org-card.collapsed #org-content { display: none; }
+    .org-header h2 { margin: 0; font-size: 16px; font-weight: normal; font-style: italic; letter-spacing: 0.02em; }
+    .org-header-buttons { display: flex; gap: 6px; }
     .org-header button, .agent-output button {
-      font: inherit; font-size: 12px; color: var(--slate); cursor: pointer;
+      font: inherit; font-size: 13px; color: var(--slate); cursor: pointer;
       background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 2px 8px;
     }
     .org-header button:disabled { opacity: 0.5; cursor: default; }
     .org-chart { display: flex; flex-direction: column; align-items: center; }
     .org-body { display: flex; gap: 14px; align-items: flex-start; margin-top: 4px; position: relative; padding-top: 12px; }
-    /* Lines from Maia down to the chain, and dashed across to the Incident Responder. */
+    /* A stem from Maia, a bar across to the middle of the outer columns, and a drop into each column. */
     .org-body::before {
       content: ""; position: absolute; top: 0; left: 50%; height: 12px; border-left: 1px solid var(--contour);
     }
     .org-body::after {
-      content: ""; position: absolute; top: 0; left: 82px; right: 70px; border-top: 1px solid var(--contour);
+      content: ""; position: absolute; top: 0; left: 100px; right: 100px; border-top: 1px solid var(--contour);
     }
-    .org-chain { display: flex; flex-direction: column; align-items: center; width: 190px; }
-    .org-side { padding-top: 0; width: 170px; border-top: 1px dashed transparent; }
-    .org-arrow { color: var(--contour); font-size: 13px; line-height: 16px; }
+    .org-col { position: relative; }
+    .org-col::before {
+      content: ""; position: absolute; top: -12px; left: 50%; height: 12px; border-left: 1px solid var(--contour);
+    }
+    .org-side::before { border-left-style: dashed; }
+    .org-chain { display: flex; flex-direction: column; align-items: center; width: 200px; }
+    .org-side { width: 150px; }
+    .org-arrow { color: var(--contour); font-size: 14px; line-height: 16px; }
     .org-box {
+      --box: var(--contour);
       display: grid; grid-template-columns: 12px 1fr; column-gap: 6px; text-align: left; width: 100%;
       font: inherit; color: var(--slate); background: #faf6ec; cursor: pointer;
-      border: 1px solid var(--contour); border-radius: 4px; padding: 5px 8px;
-      transition: box-shadow 0.3s, border-color 0.3s, background 0.3s;
+      border: 1.5px solid var(--box); border-radius: 4px; padding: 5px 8px;
+      transition: box-shadow 0.3s, background 0.3s;
     }
-    .org-box b { font-weight: normal; font-size: 13.5px; }
-    .org-box .org-role { grid-column: 2; font-size: 11px; font-style: italic; color: rgba(59, 66, 80, 0.75); }
-    .org-box .org-run { grid-column: 2; font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; color: rgba(59, 66, 80, 0.8); }
-    .org-box .org-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: var(--contour); opacity: 0.5; }
-    .org-box:hover { border-color: var(--slate); }
-    .org-box.founder { display: block; width: auto; text-align: center; cursor: default; padding: 4px 18px; }
-    .org-box.founder b { font-size: 14px; }
+    .org-box.creao { --box: var(--route); }
+    .org-box.code { --box: var(--code); }
+    .org-box b { font-weight: normal; font-size: 14.5px; }
+    .org-box .org-role { grid-column: 2; font-size: 12.5px; font-style: italic; color: rgba(59, 66, 80, 0.8); }
+    .org-box .org-run { grid-column: 2; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: rgba(59, 66, 80, 0.9); overflow-wrap: anywhere; }
+    .org-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: var(--box, var(--contour)); }
+    .org-box:hover { background: #fffaf0; }
+    .org-box.founder { --box: var(--contour); display: block; width: auto; text-align: center; cursor: default; padding: 4px 18px; }
+    .org-box.founder b { font-size: 15px; }
     .org-box.founder .org-role { display: block; }
+    .org-box.founder .org-dot { display: none; }
     .org-box.standby { border-style: dashed; }
-    .org-box.done .org-dot { background: #4f7d4c; opacity: 1; }
     .org-box.failed { border-color: var(--hazard); }
-    .org-box.failed .org-dot { background: var(--hazard); opacity: 1; }
-    .org-box.running { border-color: var(--route); background: #f1ecf6; animation: org-glow 1.4s ease-in-out infinite; }
-    .org-box.running .org-dot { background: var(--route); opacity: 1; }
-    @keyframes org-glow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(91, 63, 140, 0.0); }
-      50% { box-shadow: 0 0 0 4px rgba(91, 63, 140, 0.22); }
+    .org-box.failed .org-dot { background: var(--hazard); }
+    /* Working: a border twice as thick (padding gives back the difference so nothing shifts), a tint, a pulse. */
+    .org-box.running {
+      border-width: 3px; padding: 3.5px 6.5px;
+      background: color-mix(in srgb, var(--box) 10%, #faf6ec);
+      animation: org-pulse 1.2s ease-in-out infinite;
     }
+    @keyframes org-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--box) 0%, transparent); }
+      50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--box) 28%, transparent); }
+    }
+    .org-legend { margin: 8px 0 0; font-size: 12px; color: rgba(59, 66, 80, 0.85); text-align: center; }
+    .org-legend .org-dot { display: inline-block; margin: 0 3px 0 10px; }
+    .creao-dot { background: var(--route); }
+    .code-dot { background: var(--code); }
     .agent-output {
       width: min(560px, calc(100% - 32px)); max-height: 70vh; border: 1px solid var(--contour); border-radius: 6px;
       background: var(--paper); color: var(--slate); padding: 12px 16px; font-family: Georgia, serif;
@@ -191,25 +212,38 @@
 
   <!-- Agent org chart: Maia founds it, the Creao chain runs top to bottom, Incident Responder
        stands by off to the side. Boxes light up while their agent runs; click for the last output. -->
-  <section class="org-card" aria-label="Cairn agent org chart">
+  <section class="org-card" id="org-card" aria-label="Cairn agent org chart">
     <header class="org-header">
       <h2>The Cairn crew</h2>
-      <button type="button" id="run-agents">Run agents</button>
+      <span class="org-header-buttons">
+        <button type="button" id="run-agents">Run agents</button>
+        <button type="button" id="org-toggle" aria-expanded="true" aria-controls="org-content" title="Collapse">▾</button>
+      </span>
     </header>
-    <div class="org-chart">
-      <div class="org-box founder"><b>Maia</b><span class="org-role">founder</span></div>
-      <div class="org-body">
-        <div class="org-chain">
-          <button type="button" class="org-box" data-role="conditions"><span class="org-dot"></span><b>Conditions Analyst</b><span class="org-role">weather, avalanche, closures</span><span class="org-run"></span></button>
-          <div class="org-arrow">↓</div>
-          <button type="button" class="org-box" data-role="terrain"><span class="org-dot"></span><b>Terrain Scout</b><span class="org-role">today's zones and briefings</span><span class="org-run"></span></button>
-          <div class="org-arrow">↓</div>
-          <button type="button" class="org-box" data-role="route"><span class="org-dot"></span><b>Route Planner</b><span class="org-role">lines through each bowl</span><span class="org-run"></span></button>
-        </div>
-        <div class="org-side">
-          <button type="button" class="org-box standby" data-role="incident"><span class="org-dot"></span><b>Incident Responder</b><span class="org-role">on standby for patrol</span><span class="org-run"></span></button>
+    <div id="org-content">
+      <div class="org-chart">
+        <div class="org-box founder"><b>Maia</b><span class="org-role">founder</span></div>
+        <div class="org-body">
+          <div class="org-col org-chain">
+            <button type="button" class="org-box creao" data-role="conditions"><span class="org-dot"></span><b>Conditions Analyst</b><span class="org-role">weather, avalanche, closures</span><span class="org-run"></span></button>
+            <div class="org-arrow">↓</div>
+            <button type="button" class="org-box creao" data-role="terrain"><span class="org-dot"></span><b>Terrain Scout</b><span class="org-role">today's zones, briefings</span><span class="org-run"></span></button>
+            <div class="org-arrow">↓</div>
+            <button type="button" class="org-box creao" data-role="route"><span class="org-dot"></span><b>Route Planner</b><span class="org-role">lines through each bowl</span><span class="org-run"></span></button>
+          </div>
+          <div class="org-col org-side">
+            <button type="button" class="org-box creao standby" data-role="incident"><span class="org-dot"></span><b>Incident Responder</b><span class="org-role">on standby for patrol</span><span class="org-run"></span></button>
+          </div>
+          <div class="org-col org-chain">
+            <button type="button" class="org-box code" data-code="geofence"><span class="org-dot"></span><b>Geofence</b><span class="org-role">smooths GPS, checks zones</span><span class="org-run"></span></button>
+            <div class="org-arrow">↓</div>
+            <button type="button" class="org-box code" data-code="coordinator"><span class="org-dot"></span><b>Coordinator (Claude)</b><span class="org-role">words each spoken line</span><span class="org-run"></span></button>
+            <div class="org-arrow">↓</div>
+            <button type="button" class="org-box code" data-code="voice"><span class="org-dot"></span><b>Voice (Sonic)</b><span class="org-role">chime, then speech</span><span class="org-run"></span></button>
+          </div>
         </div>
       </div>
+      <p class="org-legend"><span class="org-dot creao-dot"></span> Creao agents <span class="org-dot code-dot"></span> our code</p>
     </div>
   </section>
 

@@ -139,7 +139,7 @@ async def event_stream():
 
 @app.get("/api/agents/state")
 def agents_state():
-    """Last run time and last output per Creao role, from data/agent_outputs/ (for the org chart)."""
+    """Org chart data: last run and output per Creao role (data/agent_outputs/), last event per code box."""
     outputs_dir = DATA_DIR / "agent_outputs"
     runs_file = outputs_dir / "creao_runs.json"
     runs = {r["role"]: r for r in json.loads(runs_file.read_text())} if runs_file.exists() else {}
@@ -150,7 +150,14 @@ def agents_state():
             "last_run": runs.get(role),
             "output": json.loads(output_file.read_text()) if output_file.exists() else None,
         }
-    return {"running": orchestrator.is_running(), "roles": state}
+    # Our code's boxes: the latest event in the in-memory history (last 200), nothing on disk,
+    # so they read "no alerts yet" after a restart.
+    code = {
+        "geofence": hub.latest("terrain", ("briefing", "guidance", "warning", "on_line")),
+        "coordinator": hub.latest("coordinator", ("decision",)),
+        "voice": hub.latest("voice", ("spoken", "unavailable", "error")),
+    }
+    return {"running": orchestrator.is_running(), "roles": state, "code": code}
 
 
 @app.post("/api/agents/run")

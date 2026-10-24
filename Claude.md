@@ -194,7 +194,7 @@ Vibe: a painted panoramic trail map. The terrain is the star; routes are thin an
 - Skier: a small dot with a fading trail of recent positions.
 - Type: a crisp serif for map labels and headings, monospace for the agent log.
 - Agent log as a field notebook: side panel on the same paper, one entry per message, small icon per agent, timestamp, short text.
-- Agent org chart: a small panel showing the Creao roles (Conditions Analyst → Terrain Scout → Route Planner → Incident Responder) with Maia as founder on top, each lighting up when it runs.
+- Agent org chart: a small panel showing the Creao roles (Conditions Analyst → Terrain Scout → Route Planner → Incident Responder) with Maia as founder on top, each lighting up when it runs. A second lane, "our code" (Geofence → Coordinator → Voice), sits beside it: Creao agents have a purple border and dot, our code a muted teal one (`--code`); a working box gets a thicker border and a pulse, not just a color. Click a box for its last output (Creao: `data/agent_outputs/`; code boxes: the last event in the in-memory history, "no alerts yet" after a restart). The card collapses.
 - Warning state: the hazard zone pulses red, a banner shows the exact words being spoken, and the safe exit line draws itself in.
 - Check in state: a large, readable countdown ring in the corner.
 - Layout: map takes most of the screen, notebook log on the right, org chart and banners overlaid on the map. Must read well on a projector.

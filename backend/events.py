@@ -34,6 +34,11 @@ class EventHub:
             loop.call_soon_threadsafe(queue.put_nowait, message)
         return message
 
+    def latest(self, source, types):
+        """The most recent message in the history from `source` with a type in `types`, or None."""
+        with self._lock:
+            return next((m for m in reversed(self._history) if m["from"] == source and m["type"] in types), None)
+
     async def subscribe(self):
         """Yield recent history, then every new message."""
         queue = asyncio.Queue()
