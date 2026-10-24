@@ -6,6 +6,7 @@ by plain name, the same way the scripts do when run as python backend/x.py):
     .venv/bin/uvicorn main:app --app-dir backend --reload --port 8000
 """
 
+import asyncio
 import json
 import threading
 from pathlib import Path
@@ -14,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import coordinator
 import geofence
 import orchestrator
 from events import hub
@@ -21,6 +23,9 @@ from replay import load_track, replay
 
 # The demo date for replay mode.
 DEMO_DATE = "2026-02-22"
+
+# Coordinator tasks in flight (kept referenced so they aren't garbage collected).
+_speaking = set()
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT / "frontend"
@@ -47,11 +52,17 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         raise HTTPException(404, f"unknown scenario {scenario_id}")
 
     # Geofence the replayed fixes against the current hazard map; warnings go to the dashboard log.
-    fence = None
+    fence = hazard = None
     if geofence.HAZARD_MAP_FILE.exists():
-        fence = geofence.Geofence(geofence.load_hazard_map(), track["ability"])
+        hazard = geofence.load_hazard_map()
+        fence = geofence.Geofence(hazard, track["ability"])
     else:
         hub.publish("terrain", "no_hazard_map", {"error": "data/hazard_map.json missing; run agents first"})
+
+    async def speak(alert):
+        # Runs beside the replay so the skier keeps moving while Claude words the line.
+        decision = await coordinator.decide(alert, hazard, track["ability"])
+        hub.publish("coordinator", "decision", decision)
 
     async def events():
         async for message in replay(track, speed):
@@ -59,6 +70,9 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
             if fence:
                 for alert in fence.update(message["data"]):
                     hub.publish("terrain", alert["level"], alert)
+                    task = asyncio.create_task(speak(alert))
+                    _speaking.add(task)
+                    task.add_done_callback(_speaking.discard)
         yield "event: end\ndata: {}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")

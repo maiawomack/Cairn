@@ -12,7 +12,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Expert entrance. 22.3 cm new snow, unrated danger today."
+   "hint": "Spanky's Ladder entrance: unrated danger, 22 cm new snow, gusts 52."
   },
   {
    "id": "spankys-closure-1",
@@ -24,7 +24,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Permanently closed. Do not enter."
+   "hint": "Permanently closed beside Spanky's Ladder toward Showcase Bowl. Do not enter."
   },
   {
    "id": "chimney-ladder-closure-1",
@@ -36,7 +36,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Permanently closed. Do not enter."
+   "hint": "Permanently closed by Chimney Ladder and the Grey Zone. Do not enter."
   },
   {
    "id": "spankys-cliff-band-1",
@@ -48,7 +48,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band at Spanky's entrance and Ruby Bowl Traverse. Stay clear."
+   "hint": "Spanky's entrance cliff band, active. High severity for all levels."
   },
   {
    "id": "garnet-cliff-band-1",
@@ -60,7 +60,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band in Garnet Bowl Center. Stay clear."
+   "hint": "Garnet Bowl Center cliff band, active. High severity for all levels."
   },
   {
    "id": "diamond-cliff-band-1",
@@ -72,7 +72,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Wild Thing and Diamond Centre. Stay clear."
+   "hint": "Cliff band between Wild Thing and Diamond Centre. Active, high severity."
   },
   {
    "id": "garnet-cliff-band-2",
@@ -84,7 +84,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Stay clear."
+   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Active, high."
   },
   {
    "id": "ruby-cliff-band-1",
@@ -96,7 +96,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Long cliff band through Ruby Bowl. Stay clear."
+   "hint": "Long Ruby Bowl cliff band. Active, high severity for all levels."
   },
   {
    "id": "diamond-cliff-band-3",
@@ -108,7 +108,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band beside Wild Thing. Stay clear."
+   "hint": "Cliff band beside Wild Thing. Active, high severity."
   },
   {
    "id": "diamond-cliff-band-2",
@@ -120,7 +120,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl. Stay clear."
+   "hint": "Cliff at Helter Skelter entrance to Diamond Bowl. Active, high severity."
   },
   {
    "id": "sapphire-cliff-band-1",
@@ -132,7 +132,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes. Stay clear."
+   "hint": "Sapphire Chutes cliff band in Sapphire Bowl. Active, high severity."
   },
   {
    "id": "spankys-cliff-band-2",
@@ -144,7 +144,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder. Stay clear."
+   "hint": "Cliff band between Spanky's Chute and Shoulder. Active, high severity."
   },
   {
    "id": "diamond-cliff-band-4",
@@ -156,7 +156,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band near Zut Zut. Stay clear."
+   "hint": "Cliff band near Zut Zut. Active, high severity."
   },
   {
    "id": "diamond-cliff-band-5",
@@ -168,7 +168,7 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band along the Bad Attitude Traverse. Stay clear."
+   "hint": "Cliff band along the Bad Attitude Traverse. Active, high severity."
   },
   {
    "id": "showcase-cliff-band-1",
@@ -180,12 +180,12 @@
     "advanced",
     "expert"
    ],
-   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Stay clear."
+   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Active, high severity."
   }
  ],
  "notes_for_route_planner": [
-  "Resort operating on this replay date; no closures in the conditions input apply here.",
-  "Avalanche danger unrated at all elevations; 22.3 cm new snow, 51.8 km/h gusts, visibility unknown.",
-  "Both permanently closed areas and every mapped cliff band are hard limits."
+  "Avalanche danger unrated and in-bounds closure status unverified; treat hazard as unknown.",
+  "Visibility unrecorded; no sightline data for Spanky's Ladder or the cliff bands.",
+  "Two permanent closures beside Spanky's Ladder and Chimney Ladder are hard no-entry limits."
  ]
 }

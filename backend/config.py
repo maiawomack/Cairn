@@ -58,3 +58,13 @@ def warning_distance_m(speed_m_s, zone_type="cliff"):
 
 def confirm_fixes(zone_type="cliff"):
     return GEOFENCE_CLOSURE_CONFIRM_FIXES if zone_type == "closure" else GEOFENCE_CONFIRM_FIXES
+
+
+# ---- Coordinator (spoken warning wording) ----
+
+# Claude model that words the spoken warning. Haiku 5.5: the fastest current model.
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL") or "claude-haiku-5-5"
+# If Claude hasn't answered by then, speak the Route Planner's line (or a template).
+COORDINATOR_TIMEOUT_S = _number("COORDINATOR_TIMEOUT_S", 1.5)
+# Longest spoken line we accept from Claude.
+COORDINATOR_MAX_WORDS = int(_number("COORDINATOR_MAX_WORDS", 15))
