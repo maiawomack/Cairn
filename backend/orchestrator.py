@@ -78,7 +78,7 @@ def run_chain(date, mode="replay", publish=_print_publish):
         hazard_map.save_output("terrain", terrain)
         route, _ = run("route", {
             "terrain_json": json.dumps(terrain),
-            "safe_exits_json": json.dumps(hazard_map.exit_list()),
+            "safe_lines_json": json.dumps(hazard_map.safe_line_list()),
             "zone_types": json.dumps(hazard_map.zone_types()),
         })
         hazard_map.save_output("route", route)

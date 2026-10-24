@@ -88,7 +88,7 @@ cairn/
 
 ## Data formats
 
-Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo mode). The merge step owns this schema, not any single agent. It combines the Conditions Analyst output, the Terrain Scout zone annotations, the Route Planner plans, and the geometry from `hazard_zones.geojson` and `safe_exits.geojson`:
+Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo mode). The merge step owns this schema, not any single agent. It combines the Conditions Analyst output, the Terrain Scout zone annotations, the Route Planner's route output, and the geometry from `hazard_zones.geojson` and `safe_exits.geojson`:
 
 ```json
 {
@@ -115,11 +115,10 @@ Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo 
   "safe_exits": [
     { "id": "spankys-cliff-band-1-exit", "from_zone": "spankys-cliff-band-1", "name": "Exit to Rock Alley", "path": [[lat, lon], "..."] }
   ],
-  "plans": {
-    "beginner":     { "off_limits": ["zone ids"], "reroutes": [{ "zone_id": "...", "exit_id": "...", "spoken": "words to say" }] },
-    "intermediate": { "off_limits": [], "reroutes": [] },
-    "advanced":     { "off_limits": [], "reroutes": [] },
-    "expert":       { "off_limits": [], "reroutes": [] }
+  "route": {
+    "bowls": [{ "zone_id": "garnet-bowl", "recommended_line_id": "garnet-bowl-right-line", "why": "..." }],
+    "cliff_guidance": [{ "zone_id": "garnet-cliff-band-1", "line_id": null, "spoken": "words to say" }],
+    "hard_limits": [{ "zone_id": "spankys-closure-1", "spoken": "words to say" }]
   },
   "notes_for_incident_responder": "string (Route Planner)"
 }
@@ -127,14 +126,14 @@ Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo 
 
 Agent outputs, each the last ```json block in the run's result text:
 - Conditions Analyst: the full conditions document is the run's JSON artifact (`result.artifacts`, type application/json): `{ generated_at, mode, date, resort_operating, weather, avalanche, closures, notes_for_terrain_scout, risk_summary, sources }`. It becomes `conditions` (real nulls) and is what the Terrain Scout receives. `result.text` varies between runs (sometimes only flat form fields with the string "null", sometimes also a smaller `conditions_json` and `planner_notes`), so it is only used for `planner_notes` when present. Download artifacts with the key only to agent.creao.ai; follow the 302 to storage without the key.
-- Terrain Scout: `{ date, zones: [{ id, active, severity, applies_to, hint }] }`, merged into `zones` by id. Zone ids the Terrain Scout invents are ignored. A cliff stays `active: true` even if the Terrain Scout says otherwise.
+- Terrain Scout (v1.1.0): `{ date, based_on_conditions, zones: [{ id, active, severity, hint, briefing }], notes_for_route_planner }`, merged into `zones` by id (`briefing` is the spoken entry briefing used when Claude's is rejected). Zone ids the Terrain Scout invents are ignored. A cliff stays `active: true` even if the Terrain Scout says otherwise.
 
 Avalanche rating: never substitute a rating. When the Conditions Analyst returns null (for example, no Avalanche Canada archive for a replay date), the rating stays null, the dashboard shows "Avalanche rating: not available for this date", and spoken wording may treat the unknown rating as a reason for caution. Unknown never changes which zones warn.
-- Route Planner: `{ date, based_on_terrain, plans: { beginner, intermediate, advanced, expert: { off_limits: [zone ids], reroutes: [{ zone_id, exit_id, spoken }] } }, notes_for_incident_responder }`, merged into `plans` and `notes_for_incident_responder`. Off-limits or reroute entries that name an unknown zone or exit id are dropped (logged), never invented.
+- Route Planner (safe lines version): `{ date, bowls: [{ bowl_id, recommended_line_id, why }], cliff_guidance: [{ zone_id, line_id, spoken }], hard_limits: [{ zone_id, spoken }], notes_for_incident_responder }`, merged into `route` and `notes_for_incident_responder`. `bowl_id` may be the bowl's name or id. Entries naming an unknown zone or safe line are dropped (logged), never invented. Its spoken lines stand in for Claude's when they pass the same checks.
 
-Where the deliverable lands moves between runs of the same agent (seen 2026-10-24): a JSON artifact, a ```json block in a markdown artifact, a ```json block in `chatText`, or a JSON string inside `result.text`. `result.text` is often just the agent's memory `persist_fields`. `creao_client.agent_output` takes the first JSON object with the role's required keys (conditions: weather + avalanche; terrain: zones; route: plans) and fails loudly otherwise, so a wrong shape never reaches the merge. Known gap: the Route Planner currently writes its plan only as markdown tables (no ```json block); fix it in Creao to end with the JSON above.
+Where the deliverable lands moves between runs of the same agent (seen 2026-10-24): a JSON artifact, a ```json block in a markdown artifact, a ```json block in `chatText`, or a JSON string inside `result.text`. `result.text` is often just the agent's memory `persist_fields`. `creao_client.agent_output` takes the first JSON object with the role's required keys (conditions: weather + avalanche; terrain: zones; route: bowls + cliff_guidance) and fails loudly otherwise, so a wrong shape never reaches the merge. (The Route Planner's markdown-only output was fixed in Creao on 2026-10-24; it now returns JSON.)
 
-Agent inputs (textarea fields are JSON strings): Conditions `{mode, date}`; Terrain Scout `{conditions_json, hazard_zones: [{id, type, name}]}`; Route Planner `{terrain_json, safe_exits_json: [{id, from_zone, name}], zone_types: {id: type}}`. The orchestrator saves each agent's parsed output in `data/agent_outputs/`, so `python backend/hazard_map.py` can rebuild the map without spending credits.
+Agent inputs (textarea fields are JSON strings): Conditions `{mode, date}`; Terrain Scout `{conditions_json, hazard_zones: [{id, type, name}]}`; Route Planner `{terrain_json, safe_lines_json: [{id, name, bowl, for_zones}], zone_types: {id: type}}`. The orchestrator saves each agent's parsed output in `data/agent_outputs/`, so `python backend/hazard_map.py` can rebuild the map without spending credits.
 
 Geometry (zone polygons, exit paths) always comes from the geojson files, never from an agent. Every zone in `hazard_zones.geojson` appears in the map even if the Terrain Scout leaves it out, so a cliff can never disappear because an agent skipped it. The fast path reads only this merged shape.
 

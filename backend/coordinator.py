@@ -9,9 +9,10 @@ level gets its own kind of line:
   - guidance (cliff on trajectory): calm, names the hazard and the safe line, never "stop"
   - warning (at a cliff edge, closure or boundary): firm, may say "Stop now"
 Claude writes the line from the facts. If it takes longer than COORDINATOR_TIMEOUT_S
-(1.5 s), errors, refuses, or its line breaks a rule below, the Route Planner's line is
-used if it passes the same rules, and otherwise a fixed template. Every decision is
-logged with the path used.
+(1.5 s), errors, refuses, or its line breaks a rule below, the agents' own line is used
+if it passes the same rules (the Terrain Scout's briefing, or the Route Planner's cliff
+guidance or hard limit), and otherwise a fixed template. Every decision is logged with
+the path used.
 
 Hard rule (CLAUDE.md): Claude only chooses the words. The geofence already decided that
 the skier is close to the zone, and an alert is always spoken, whatever Claude does.
@@ -71,14 +72,25 @@ def _claude():
     return _client
 
 
-def reroute_for(hazard_map, ability, zone_id):
-    """The Route Planner's reroute for this zone and ability, with the exit's name, or None."""
-    plan = (hazard_map.get("plans") or {}).get(ability) or {}
-    reroute = next((r for r in plan.get("reroutes", []) if r.get("zone_id") == zone_id), None)
-    if reroute is None:
-        return None
-    exit_ = next((e for e in hazard_map.get("safe_exits", []) if e["id"] == reroute.get("exit_id")), None)
-    return {**reroute, "exit_name": exit_["name"] if exit_ else None}
+def agent_line(hazard_map, alert, zone):
+    """The agents' own spoken line for this alert, as (source, line or None).
+
+    Briefings: the Terrain Scout's briefing for the zone. Cliffs: the Route Planner's
+    cliff guidance. Closures and the boundary: the Route Planner's hard limit.
+    """
+    if alert["level"] == "briefing":
+        return "terrain_scout", zone.get("briefing")
+    route = hazard_map.get("route") or {}
+    entries = route.get("cliff_guidance" if zone["type"] == "cliff" else "hard_limits") or []
+    entry = next((e for e in entries if e.get("zone_id") == zone["id"]), None)
+    return "route_planner", (entry or {}).get("spoken")
+
+
+def recommended_line(hazard_map, zone):
+    """The Route Planner's recommended line for a bowl: {name, why}, or None."""
+    entry = next((b for b in (hazard_map.get("route") or {}).get("bowls", []) if b["zone_id"] == zone["id"]), None)
+    line = entry and next((l for l in hazard_map.get("safe_lines", []) if l["id"] == entry["recommended_line_id"]), None)
+    return {"name": line["name"], "why": entry.get("why")} if line else None
 
 
 def safe_line_name(hazard_map, zone):
@@ -86,10 +98,8 @@ def safe_line_name(hazard_map, zone):
     return next((l["name"] for l in hazard_map.get("safe_lines", []) if l["id"] == zone.get("safe_line")), None)
 
 
-def safe_exit_name(hazard_map, zone_id, reroute):
-    """The plan's exit for this zone, else the zone's own code-owned safe exit, else None."""
-    if reroute and reroute.get("exit_name"):
-        return reroute["exit_name"]
+def safe_exit_name(hazard_map, zone_id):
+    """The zone's own code-owned safe exit, or None."""
     return next((e["name"] for e in hazard_map.get("safe_exits", []) if e["from_zone"] == zone_id), None)
 
 
@@ -107,7 +117,7 @@ def conditions_facts(hazard_map):
     }
 
 
-def facts_for(alert, zone, hazard_map, ability, reroute):
+def facts_for(alert, zone, hazard_map, ability, agent_spoken):
     level = alert["level"]
     facts = {"level": level, "skier_ability": ability, "hazard": HAZARD_WORDS.get(zone["type"], "hazard")}
     if level == "briefing":
@@ -117,6 +127,8 @@ def facts_for(alert, zone, hazard_map, ability, reroute):
             "conditions": conditions_facts(hazard_map),
             # Two at most, and only the part of each name before any comma, to keep it short.
             "main_hazards": [names[h].split(",")[0] for h in zone.get("hazards_inside", [])[:2] if h in names],
+            "recommended_line": recommended_line(hazard_map, zone),
+            "terrain_scout_briefing": agent_spoken,
         })
         return facts
     facts.update({"zone_name": zone["name"], "hint": zone.get("hint"),
@@ -124,9 +136,9 @@ def facts_for(alert, zone, hazard_map, ability, reroute):
     if zone["type"] == "cliff":
         facts["safe_line"] = safe_line_name(hazard_map, zone)
     else:
-        facts["safe_exit"] = safe_exit_name(hazard_map, alert["zone_id"], reroute)
-    if level == "warning" and reroute and reroute.get("spoken"):
-        facts["route_planner_line"] = reroute["spoken"]
+        facts["safe_exit"] = safe_exit_name(hazard_map, alert["zone_id"])
+    if agent_spoken:
+        facts["route_planner_line"] = agent_spoken
     return facts
 
 
@@ -160,6 +172,8 @@ def template_line(alert, zone, hazard_map, facts):
             parts.append("Avalanche rating not available.")
         if facts["main_hazards"]:
             parts.append(f"Main hazards: {' and '.join(facts['main_hazards'][:2])}.")
+        if facts.get("recommended_line"):
+            parts.append(f"Suggested line: {facts['recommended_line']['name']}.")
         return " ".join(parts)
     target = facts.get("safe_line") and f"Move to the {facts['safe_line']} line."
     target = target or (facts.get("safe_exit") and f"{facts['safe_exit']}.") or ""
@@ -215,21 +229,20 @@ def _ms(started):
 async def decide(alert, hazard_map, ability):
     """Choose the spoken line for one geofence alert. Always returns a line."""
     zone = next(z for z in hazard_map["zones"] if z["id"] == alert["zone_id"])
-    reroute = reroute_for(hazard_map, ability, alert["zone_id"])
-    facts = facts_for(alert, zone, hazard_map, ability, reroute)
+    agent_source, agent_spoken = agent_line(hazard_map, alert, zone)
+    facts = facts_for(alert, zone, hazard_map, ability, agent_spoken)
 
     if os.environ.get("ANTHROPIC_API_KEY"):
         claude_line, reason, claude_ms = await ask_claude(facts)
     else:
         claude_line, reason, claude_ms = None, "ANTHROPIC_API_KEY not set", 0
 
-    # The Route Planner's line only stands in if it passes the same rules for this level.
-    route_line = (reroute or {}).get("spoken")
-    route_ok = bool(route_line) and alert["level"] != "briefing" and not problems(route_line, alert["level"], facts)
+    # The agents' own line only stands in if it passes the same rules for this level.
+    agent_ok = bool(agent_spoken) and not problems(agent_spoken, alert["level"], facts)
     if claude_line:
         path, line = "claude", claude_line
-    elif route_ok:
-        path, line = "route_planner", route_line
+    elif agent_ok:
+        path, line = agent_source, agent_spoken
     else:
         path, line = "template", template_line(alert, zone, hazard_map, facts)
 
@@ -242,7 +255,8 @@ async def decide(alert, hazard_map, ability):
         "claude_reason": reason,
         "claude_ms": claude_ms,
         "claude_line": claude_line,
-        "route_planner_line": route_line,
+        "agent_line": agent_spoken,
+        "agent_line_ok": agent_ok,
         "model": config.CLAUDE_MODEL,
     }
 

@@ -1,32 +1,29 @@
 {
- "generated_at": "2026-10-24T18:43:38.796376+00:00",
- "complete": false,
+ "generated_at": "2026-10-24T19:01:33.526062+00:00",
+ "complete": true,
  "date": "2026-02-22",
  "creao_run_link": null,
  "creao_runs": [
   {
    "role": "conditions",
-   "run_id": "5a420c25-1718-44d7-b9eb-6160fd57014b",
-   "started_at": "2026-10-24T06:47:33.583562+00:00",
-   "finished_at": "2026-10-24T06:48:14.197481+00:00",
-   "duration_s": 35.3,
-   "wall_s": 40.6
+   "run_id": "5be0dac2-60af-4c59-aa4c-70d2a7232125",
+   "started_at": "2026-10-24T18:57:35.391Z",
+   "finished_at": "2026-10-24T18:58:05.945Z",
+   "duration_s": 30.6
   },
   {
    "role": "terrain",
-   "run_id": "38758c85-1ace-4fa3-9994-c7394be9ef52",
-   "started_at": "2026-10-24T06:48:14.200640+00:00",
-   "finished_at": "2026-10-24T06:49:04.950207+00:00",
-   "duration_s": 41.2,
-   "wall_s": 50.8
+   "run_id": "1b4b3d4f-1269-46d2-ba8a-e6715734e7c3",
+   "started_at": "2026-10-24T18:58:06.813Z",
+   "finished_at": "2026-10-24T18:58:43.091Z",
+   "duration_s": 36.3
   },
   {
    "role": "route",
-   "run_id": "dab36e7f-245d-4579-bbf5-66d35313653f",
-   "started_at": "2026-10-24T06:49:04.953363+00:00",
-   "finished_at": "2026-10-24T06:49:55.696093+00:00",
-   "duration_s": 45.6,
-   "wall_s": 50.7
+   "run_id": "21d37c06-6cb4-44cd-89ea-e54a89dc6748",
+   "started_at": "2026-10-24T18:58:48.466Z",
+   "finished_at": "2026-10-24T18:59:29.278Z",
+   "duration_s": 40.8
   }
  ],
  "conditions": {
@@ -79,11 +76,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Spanky's Ladder entrance: unrated danger, 22 cm new snow, gusts 52.",
+   "hint": "22 cm new snow and gusts to 52 km/h at the entrance.",
+   "briefing": "22 cm new snow, gusts 52 km/h, visibility unrecorded \u2014 mind the cliff band at the entrance.",
    "annotated_by": "terrain_scout",
    "hazards_inside": [
     "spankys-cliff-band-1",
@@ -631,11 +627,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Permanently closed beside Spanky's Ladder toward Showcase Bowl. Do not enter.",
+   "hint": "Closed, permanently off limits toward Showcase Bowl.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": null,
@@ -695,11 +690,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Permanently closed by Chimney Ladder and the Grey Zone. Do not enter.",
+   "hint": "Closed, permanently off limits by Chimney Ladder and the Grey Zone.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": null,
@@ -819,11 +813,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Spanky's entrance cliff band, active. High severity for all levels.",
+   "hint": "Cliff band along the Ruby Bowl Traverse with 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "garnet-bowl-right-line",
@@ -962,11 +955,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Garnet Bowl Center cliff band, active. High severity for all levels.",
+   "hint": "Cliff band in Garnet Bowl Center, under 22 cm of new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "garnet-bowl-right-line",
@@ -1105,11 +1097,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Wild Thing and Diamond Centre. Active, high severity.",
+   "hint": "Cliff band between Wild Thing and Diamond Centre; gusts 52 km/h.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "garnet-bowl-right-line",
@@ -1296,11 +1287,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Active, high.",
+   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "garnet-bowl-left-line",
@@ -1415,11 +1405,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Long Ruby Bowl cliff band. Active, high severity for all levels.",
+   "hint": "Long cliff band through Ruby Bowl; 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "shredder-line",
@@ -1750,11 +1739,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band beside Wild Thing. Active, high severity.",
+   "hint": "Cliff band beside Wild Thing, with 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "diamond-bowl-line",
@@ -1905,11 +1893,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff at Helter Skelter entrance to Diamond Bowl. Active, high severity.",
+   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "hobbs-right-line",
@@ -2024,11 +2011,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Sapphire Chutes cliff band in Sapphire Bowl. Active, high severity.",
+   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": null,
@@ -2215,11 +2201,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Spanky's Chute and Shoulder. Active, high severity.",
+   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "garnet-bowl-left-line",
@@ -2430,11 +2415,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band near Zut Zut. Active, high severity.",
+   "hint": "Cliff band near Zut Zut; gusts 52 km/h today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "diamond-bowl-line",
@@ -2621,11 +2605,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band along the Bad Attitude Traverse. Active, high severity.",
+   "hint": "22 cm of new snow along the Bad Attitude Traverse cliff band.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": "hobbs-right-line",
@@ -2804,11 +2787,10 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Active, high severity.",
+   "hint": "Cliff band along Showcase and the Blackcomb Glacier Traverse.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
    "hazards_inside": [],
    "safe_line": null,
@@ -2973,8 +2955,9 @@
     "beginner",
     "intermediate"
    ],
-   "hint": null,
-   "annotated_by": "default",
+   "hint": "Garnet Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands in Garnet Bowl Center are the markers.",
+   "annotated_by": "terrain_scout",
    "hazards_inside": [
     "spankys-cliff-band-1",
     "garnet-cliff-band-1",
@@ -3135,8 +3118,9 @@
     "beginner",
     "intermediate"
    ],
-   "hint": null,
-   "annotated_by": "default",
+   "hint": "Ruby Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 the long cliff band through Ruby Bowl.",
+   "annotated_by": "terrain_scout",
    "hazards_inside": [
     "ruby-cliff-band-1",
     "spankys-cliff-band-2",
@@ -3349,8 +3333,9 @@
     "beginner",
     "intermediate"
    ],
-   "hint": null,
-   "annotated_by": "default",
+   "hint": "Diamond Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands between Wild Thing and Diamond Centre.",
+   "annotated_by": "terrain_scout",
    "hazards_inside": [
     "diamond-cliff-band-2",
     "diamond-cliff-band-4",
@@ -3507,8 +3492,9 @@
     "beginner",
     "intermediate"
    ],
-   "hint": null,
-   "annotated_by": "default",
+   "hint": "Sapphire Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff band by the Sapphire Chutes.",
+   "annotated_by": "terrain_scout",
    "hazards_inside": [
     "sapphire-cliff-band-1",
     "diamond-cliff-band-4"
@@ -4208,23 +4194,100 @@
    ]
   }
  ],
- "plans": {
-  "beginner": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "intermediate": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "advanced": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "expert": {
-   "off_limits": [],
-   "reroutes": []
-  }
+ "route": {
+  "bowls": [
+   {
+    "zone_id": "garnet-bowl",
+    "recommended_line_id": "garnet-bowl-right-line",
+    "why": "Highest hazard count today; Garnet Bowl Right clears three active cliff zones."
+   },
+   {
+    "zone_id": "ruby-bowl",
+    "recommended_line_id": "shredder-line",
+    "why": "Shredder guides the long Ruby Bowl cliff band under 22 cm."
+   },
+   {
+    "zone_id": "diamond-bowl",
+    "recommended_line_id": "hobbs-right-line",
+    "why": "Hobbs (Right) guides two active Diamond cliffs under 22 cm and gusts."
+   }
+  ],
+  "cliff_guidance": [
+   {
+    "zone_id": "spankys-cliff-band-1",
+    "line_id": null,
+    "spoken": "Wind-loaded cliff band at the entrance; Garnet Bowl Right is loaded too."
+   },
+   {
+    "zone_id": "garnet-cliff-band-1",
+    "line_id": null,
+    "spoken": "Garnet Bowl Center cliff band; Garnet Bowl Right sits under new snow."
+   },
+   {
+    "zone_id": "diamond-cliff-band-1",
+    "line_id": null,
+    "spoken": "Cliff band beside Wild Thing; Garnet Bowl Right remains wind loaded."
+   },
+   {
+    "zone_id": "garnet-cliff-band-2",
+    "line_id": null,
+    "spoken": "Garnet-Diamond cliff band today; Garnet Bowl Left is wind loaded too."
+   },
+   {
+    "zone_id": "ruby-cliff-band-1",
+    "line_id": null,
+    "spoken": "Long Ruby Bowl cliff band under 22 cm; Shredder is wind loaded."
+   },
+   {
+    "zone_id": "diamond-cliff-band-3",
+    "line_id": null,
+    "spoken": "Cliff band beside Wild Thing, 22 cm new snow; Diamond Bowl loaded."
+   },
+   {
+    "zone_id": "diamond-cliff-band-2",
+    "line_id": null,
+    "spoken": "Helter Skelter entrance cliff; Hobbs (Right) is wind loaded today."
+   },
+   {
+    "zone_id": "sapphire-cliff-band-1",
+    "line_id": null,
+    "spoken": "Sapphire Chutes cliff band, 22 cm new snow; no listed line."
+   },
+   {
+    "zone_id": "spankys-cliff-band-2",
+    "line_id": null,
+    "spoken": "Cliff band between Spanky's Chute and Shoulder; Garnet Bowl Left is loaded."
+   },
+   {
+    "zone_id": "diamond-cliff-band-4",
+    "line_id": null,
+    "spoken": "Zut Zut cliff band, gusts 52 km/h; Diamond Bowl is loaded too."
+   },
+   {
+    "zone_id": "diamond-cliff-band-5",
+    "line_id": null,
+    "spoken": "Bad Attitude cliff band, 22 cm new snow; Hobbs (Right) is loaded."
+   },
+   {
+    "zone_id": "showcase-cliff-band-1",
+    "line_id": null,
+    "spoken": "Showcase and Blackcomb Glacier cliff band; no listed line covers it today."
+   }
+  ],
+  "hard_limits": [
+   {
+    "zone_id": "spankys-closure-1",
+    "spoken": "Spanky's closure by Showcase Bowl, permanently closed."
+   },
+   {
+    "zone_id": "chimney-ladder-closure-1",
+    "spoken": "Chimney Ladder and Grey Zone closure, permanently closed."
+   }
+  ]
  },
- "notes_for_incident_responder": null
+ "notes_for_incident_responder": [
+  "Avalanche danger unrated for 2026-02-22 (no archived forecast); 22.3 cm new snow and gusts to 51.8 km/h.",
+  "Visibility was not recorded; sightlines to the cliff bands are unverified.",
+  "Hard limits in force: Spanky's closure toward Showcase Bowl; Chimney Ladder and Grey Zone closure."
+ ]
 }

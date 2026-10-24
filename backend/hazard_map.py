@@ -23,7 +23,6 @@ OUTPUTS_DIR = DATA_DIR / "agent_outputs"
 HAZARD_MAP_FILE = DATA_DIR / "hazard_map.json"
 CACHED_FILE = DATA_DIR / "hazard_map.cached.json"
 
-ABILITIES = ("beginner", "intermediate", "advanced", "expert")
 
 # Used only when the Terrain Scout leaves a zone out, so the zone still warns.
 DEFAULT_ANNOTATION = {"severity": "high", "applies_to": ["beginner", "intermediate"], "hint": None}
@@ -47,8 +46,13 @@ def zone_list():
 
 
 def exit_list():
-    """Route Planner input: [{id, from_zone, name}]."""
+    """[{id, from_zone, name}] for the code-owned safe exits."""
     return [{k: e["properties"][k] for k in ("id", "from_zone", "name")} for e in load_exits()]
+
+
+def safe_line_list():
+    """Route Planner input (safe_lines_json): [{id, name, bowl, for_zones}]."""
+    return [{k: f["properties"][k] for k in ("id", "name", "bowl", "for_zones")} for f in load_safe_lines()]
 
 
 def zone_types():
@@ -72,7 +76,6 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
         parts = [g["coordinates"]] if g["type"] == "LineString" else g["coordinates"] if g["type"] == "MultiLineString" else []
         cliff_lines[f["properties"]["osm_id"]] = [latlon(part) for part in parts]
     zone_ids = {z["properties"]["id"] for z in zones}
-    exit_ids = {e["properties"]["id"] for e in exits}
 
     annotations = {}
     for annotation in terrain_output.get("zones", []):
@@ -100,6 +103,7 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
             "severity": annotation.get("severity", DEFAULT_ANNOTATION["severity"]),
             "applies_to": annotation.get("applies_to", DEFAULT_ANNOTATION["applies_to"]),
             "hint": annotation.get("hint"),
+            "briefing": annotation.get("briefing"),  # Terrain Scout v1.1: spoken entry briefing
             "annotated_by": "terrain_scout" if p["id"] in annotations else "default",
             # Expert zones: the hazards to name in the entry briefing. Cliffs: the safe line to name in guidance.
             "hazards_inside": p.get("hazards_inside", []),
@@ -109,31 +113,34 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
             "polygon": latlon(zone["geometry"]["coordinates"][0]),
         })
 
-    plans = {}
-    for ability in ABILITIES:
-        plan = (route_output.get("plans") or {}).get(ability) or {}
-        off_limits = []
-        for zone_id in plan.get("off_limits", []):
-            if zone_id in zone_ids:
-                off_limits.append(zone_id)
-            else:
-                warn(f"Route Planner {ability} off_limits names unknown zone {zone_id!r}, dropped")
-        reroutes = []
-        for reroute in plan.get("reroutes", []):
-            # exit_id null is allowed: no exit, just a heads up (see geofence.py).
-            exit_ok = reroute.get("exit_id") is None or reroute.get("exit_id") in exit_ids
-            if reroute.get("zone_id") not in zone_ids or not exit_ok:
-                warn(f"Route Planner {ability} reroute {reroute.get('zone_id')!r} -> {reroute.get('exit_id')!r} "
-                     "names an unknown zone or exit, dropped")
-                continue
-            reroutes.append({k: reroute.get(k) for k in ("zone_id", "exit_id", "spoken")})
-        plans[ability] = {"off_limits": off_limits, "reroutes": reroutes}
+    # Route Planner (safe_lines_json input): a recommended line per bowl, spoken guidance per
+    # cliff, and spoken hard limits per closure. Unknown zone or line ids are dropped.
+    line_ids = {f["properties"]["id"] for f in safe_lines}
+    bowl_ids = {z["properties"]["name"]: z["properties"]["id"] for z in zones if z["properties"]["type"] == "expert_terrain"}
+    route = {"bowls": [], "cliff_guidance": [], "hard_limits": []}
+    for bowl in route_output.get("bowls") or []:
+        zone_id = bowl_ids.get(bowl.get("bowl_id"), bowl.get("bowl_id"))  # the agent may give the bowl's name or id
+        if zone_id not in zone_ids or bowl.get("recommended_line_id") not in line_ids:
+            warn(f"Route Planner bowl {bowl.get('bowl_id')!r} -> {bowl.get('recommended_line_id')!r} names an unknown bowl or line, dropped")
+            continue
+        route["bowls"].append({"zone_id": zone_id, "recommended_line_id": bowl["recommended_line_id"], "why": bowl.get("why")})
+    for guidance in route_output.get("cliff_guidance") or []:
+        line_id = guidance.get("line_id")
+        if guidance.get("zone_id") not in zone_ids or (line_id is not None and line_id not in line_ids):
+            warn(f"Route Planner cliff guidance {guidance.get('zone_id')!r} -> {line_id!r} names an unknown zone or line, dropped")
+            continue
+        route["cliff_guidance"].append({k: guidance.get(k) for k in ("zone_id", "line_id", "spoken")})
+    for limit in route_output.get("hard_limits") or []:
+        if limit.get("zone_id") not in zone_ids:
+            warn(f"Route Planner hard limit {limit.get('zone_id')!r} names an unknown zone, dropped")
+            continue
+        route["hard_limits"].append({k: limit.get(k) for k in ("zone_id", "spoken")})
 
     conditions = conditions_output["conditions"]
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        # False until the Route Planner has produced plans; the geofence then falls back to applies_to.
-        "complete": bool(route_output.get("plans")),
+        # False until the Route Planner has produced its route output (the demo copy waits for it).
+        "complete": bool(route["bowls"] or route["cliff_guidance"]),
         "date": conditions.get("date"),
         "creao_run_link": None,
         "creao_runs": creao_runs,
@@ -148,7 +155,7 @@ def build(conditions_output, terrain_output, route_output, creao_runs, warn=prin
             {k: e["properties"][k] for k in ("id", "from_zone", "name")} | {"path": latlon(e["geometry"]["coordinates"])}
             for e in exits
         ],
-        "plans": plans,
+        "route": route,
         "notes_for_incident_responder": route_output.get("notes_for_incident_responder"),
     }
 

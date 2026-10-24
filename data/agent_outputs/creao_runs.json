@@ -1,26 +1,23 @@
 [
  {
   "role": "conditions",
-  "run_id": "5a420c25-1718-44d7-b9eb-6160fd57014b",
-  "started_at": "2026-10-24T06:47:33.583562+00:00",
-  "finished_at": "2026-10-24T06:48:14.197481+00:00",
-  "duration_s": 35.3,
-  "wall_s": 40.6
+  "run_id": "5be0dac2-60af-4c59-aa4c-70d2a7232125",
+  "started_at": "2026-10-24T18:57:35.391Z",
+  "finished_at": "2026-10-24T18:58:05.945Z",
+  "duration_s": 30.6
  },
  {
   "role": "terrain",
-  "run_id": "38758c85-1ace-4fa3-9994-c7394be9ef52",
-  "started_at": "2026-10-24T06:48:14.200640+00:00",
-  "finished_at": "2026-10-24T06:49:04.950207+00:00",
-  "duration_s": 41.2,
-  "wall_s": 50.8
+  "run_id": "1b4b3d4f-1269-46d2-ba8a-e6715734e7c3",
+  "started_at": "2026-10-24T18:58:06.813Z",
+  "finished_at": "2026-10-24T18:58:43.091Z",
+  "duration_s": 36.3
  },
  {
   "role": "route",
-  "run_id": "dab36e7f-245d-4579-bbf5-66d35313653f",
-  "started_at": "2026-10-24T06:49:04.953363+00:00",
-  "finished_at": "2026-10-24T06:49:55.696093+00:00",
-  "duration_s": 45.6,
-  "wall_s": 50.7
+  "run_id": "21d37c06-6cb4-44cd-89ea-e54a89dc6748",
+  "started_at": "2026-10-24T18:58:48.466Z",
+  "finished_at": "2026-10-24T18:59:29.278Z",
+  "duration_s": 40.8
  }
 ]
