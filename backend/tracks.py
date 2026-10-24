@@ -189,7 +189,10 @@ def scenario_1(seed=11):
 # Scenario 2: the drift turns back this close to the cliff line, a beat after the warning
 # (which comes about 31-35 m out), and rejoins Garnet Bowl Right this far below where it left.
 TURN_BACK_AT_M = 24
-REJOIN_AFTER_M = 45
+REJOIN_AFTER_M = 25
+# Where on Garnet Bowl Right the drift starts (share of the line). Earlier starts give a longer
+# run-out but a shallower approach, and guidance then has under 12 s before the edge.
+DRIFT_STARTS_AT = 0.55
 
 
 def scenario_2(seed=12, recover=True):
@@ -201,11 +204,13 @@ def scenario_2(seed=12, recover=True):
     garnet_right = below_ladder(osm_line(RUNS_FILE, "way/907542959"))  # drawn top to bottom in OSM
     # Like scenario 1, the run out ends where the line leaves Garnet Bowl: past that, the mapped
     # line points toward diamond-cliff-band-1, and guidance there is correct, not this scenario.
-    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length
+    # 10 m short of that: the mapped line ends beside the north tip of garnet-cliff-band-1, and on the
+    # last fixes GPS noise swings the smoothed heading at it, re-arming guidance after the confirmation.
+    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length - 10
     cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1, low side on its right
 
     on_line = Route(garnet_right)
-    leave_s = on_line.length * 0.55
+    leave_s = on_line.length * DRIFT_STARTS_AT
     leave, heading = on_line.at(leave_s)
     # Aim at the middle of the cliff line, approaching from its high (left) side: with
     # no contrast in flat light the skier keeps drifting with the fall line.

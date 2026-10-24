@@ -49,7 +49,8 @@ def guidance_then_recovery(track, alerts, hazard_map):
     on_line = next((a for a in alerts if a["level"] == "on_line"), None)
     closest = min(geofence._edge_distance(to_xy(p["lat"], p["lon"]), lines)[0] for p in track["truth"])
     extra = sorted({zone for _, zone in levels} - {"garnet-bowl", target["id"]})
-    ok = (bool(levels) and levels[0] == ("briefing", "garnet-bowl") and lead is not None and lead >= GUIDANCE_LEAD_S
+    after = [a for a in alerts if on_line and a["t"] > on_line["t"]]  # nothing speaks after the confirmation
+    ok = (not after and bool(levels) and levels[0] == ("briefing", "garnet-bowl") and lead is not None and lead >= GUIDANCE_LEAD_S
           and on_line is not None and on_line["line_name"] == "Garnet Bowl Right" and on_line["t"] > first_target["t"]
           and closest > 20 and not extra)
     parts = [f"guidance {lead:.0f} s before the edge" if lead is not None else
@@ -58,8 +59,10 @@ def guidance_then_recovery(track, alerts, hazard_map):
     parts.append(f"closest to the edge {closest:.0f} m")
     if extra:
         parts.append(f"also alerted: {', '.join(extra)}")
+    if after:
+        parts.append(f"{len(after)} alert(s) after the confirmation")
     expected = (f"briefing, guidance at least {GUIDANCE_LEAD_S} s before the edge, then on Garnet Bowl Right; "
-                "never inside the cliff zone; no other zones")
+                "never inside the cliff zone; no other zones; silence after the confirmation")
     return ok, expected, "; ".join(parts)
 
 
