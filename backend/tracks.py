@@ -126,14 +126,19 @@ def simulate(route, legs, seed):
     return points, truth
 
 
+# Start this far below the Ladder's expert zone: GPS noise (up to about 10 m) at the very
+# start must not land a fix inside it and add a second briefing.
+LADDER_START_MARGIN_M = 15
+
+
 def below_ladder(line):
-    """Drop the start of a line that lies inside the Spanky's Ladder entrance zone, so the
-    scenario's first briefing is the bowl's, not a second one for the Ladder."""
+    """Drop the start of a line that lies inside the Spanky's Ladder entrance zone (plus a
+    margin), so the scenario's first briefing is the bowl's, not a second one for the Ladder."""
     zones = json.loads(ZONES_FILE.read_text())["features"]
     ladder = next(z for z in zones if z["properties"]["id"] == "spankys-ladder-entrance")
     ring = [to_xy(p) for p in ladder["geometry"]["coordinates"][0]]
     route = Route(line)
-    s = next(s for s in range(0, int(route.length), 2) if not point_in_ring(route.at(s)[0], ring))
+    s = next(s for s in range(0, int(route.length), 2) if not point_in_ring(route.at(s)[0], ring)) + LADDER_START_MARGIN_M
     return [route.at(s)[0]] + [p for p, c in zip(line, route.cumulative) if c > s]
 
 
@@ -160,7 +165,7 @@ def until_leaving(line, zone_id):
     return line
 
 
-def scenario_1():
+def scenario_1(seed=11):
     """Advanced skier drops in below Spanky's Ladder and skis a clean line down Garnet Bowl Left.
 
     The track ends where the line leaves Garnet Bowl: past that, the mapped line runs out
@@ -168,7 +173,7 @@ def scenario_1():
     """
     garnet_left = until_leaving(below_ladder(osm_line(RUNS_FILE, "way/1167852432")), "garnet-bowl")
     route = Route(garnet_left)
-    points, truth = simulate(route, [(route.length, 36, 8, 4)], seed=11)
+    points, truth = simulate(route, [(route.length, 36, 8, 4)], seed=seed)
     return {
         "id": "scenario_1",
         "description": "Advanced skier on a clean line down Garnet Bowl Left",
@@ -181,36 +186,131 @@ def scenario_1():
     }
 
 
-def scenario_2():
-    """Advanced skier on Garnet Bowl Right in flat light drifts off the line onto garnet-cliff-band-1."""
+# Scenario 2: the drift turns back this close to the cliff line, a beat after the warning
+# (which comes about 31-35 m out), and rejoins Garnet Bowl Right this far below where it left.
+TURN_BACK_AT_M = 24
+REJOIN_AFTER_M = 25
+# Where on Garnet Bowl Right the drift starts (share of the line). Earlier starts give a longer
+# run-out but a shallower approach, and guidance then has under 12 s before the edge.
+DRIFT_STARTS_AT = 0.55
+
+
+def scenario_2(seed=12, recover=True):
+    """Advanced skier on Garnet Bowl Right in flat light drifts off the line toward
+    garnet-cliff-band-1, hears the warning, turns back onto Garnet Bowl Right and skis it out.
+
+    recover=False keeps drifting onto the cliff instead (identical up to the turn), so a
+    test can measure how long the guidance left before the edge."""
     garnet_right = below_ladder(osm_line(RUNS_FILE, "way/907542959"))  # drawn top to bottom in OSM
+    # Like scenario 1, the run out ends where the line leaves Garnet Bowl: past that, the mapped
+    # line points toward diamond-cliff-band-1, and guidance there is correct, not this scenario.
+    # 10 m short of that: the mapped line ends beside the north tip of garnet-cliff-band-1, and on the
+    # last fixes GPS noise swings the smoothed heading at it, re-arming guidance after the confirmation.
+    bowl_end_m = Route(until_leaving(garnet_right, "garnet-bowl")).length - 10
     cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1, low side on its right
 
     on_line = Route(garnet_right)
-    leave_s = on_line.length * 0.55
+    leave_s = on_line.length * DRIFT_STARTS_AT
     leave, heading = on_line.at(leave_s)
     # Aim at the middle of the cliff line, approaching from its high (left) side: with
     # no contrast in flat light the skier keeps drifting with the fall line.
     target = cliff[len(cliff) // 2]
     pull = (leave[0] + heading[0] * 40, leave[1] + heading[1] * 40)
-    route = Route([p for p, c in zip(garnet_right, on_line.cumulative) if c < leave_s] + [leave]
-                  + bezier(leave, pull, target))
+    drift = bezier(leave, pull, target, n=40)
+    turn_i = next(i for i, q in enumerate(drift) if math.dist(q, nearest_on_line(q, cliff)) <= TURN_BACK_AT_M)
+    turn = drift[turn_i]
 
+    # Following the advice: momentum carries them a few metres on, then they curve back
+    # onto the line further down and ski the rest of it.
+    rejoin_s = min(on_line.length - 10, leave_s + REJOIN_AFTER_M)
+    rejoin, _ = on_line.at(rejoin_s)
+    dx, dy = turn[0] - drift[turn_i - 1][0], turn[1] - drift[turn_i - 1][1]
+    norm = math.hypot(dx, dy) or 1
+    carry = (turn[0] + dx / norm * 8, turn[1] + dy / norm * 8)
+    recovery = bezier(turn, carry, rejoin, n=16)
+    before = [q for q, c in zip(garnet_right, on_line.cumulative) if c < leave_s] + [leave]
+    rest = [q for q, c in zip(garnet_right, on_line.cumulative) if rejoin_s < c < bowl_end_m] + [on_line.at(bowl_end_m)[0]]
+    if not recover:
+        route = Route(before + drift[1:])
+        legs = [(leave_s, 24, 6, 5), (route.length, 20, 3, 7)]
+        points, truth = simulate(route, legs, seed=seed)
+        return {"id": "scenario_2_no_recovery", "ability": "advanced", "points": points, "truth": truth}
+    route = Route(before + drift[1:turn_i + 1] + recovery + rest)
+
+    drift_end = Route(before + drift[1:turn_i + 1]).length
+    recovery_end = Route(before + drift[1:turn_i + 1] + recovery).length
     legs = [
-        (leave_s, 24, 6, 5),          # cautious turns on the line: flat light, little contrast
-        (route.length, 20, 3, 7),     # drifting off the line, turns getting smaller
+        (leave_s, 24, 6, 5),             # cautious turns on the line: flat light, little contrast
+        (drift_end, 20, 3, 7),           # drifting off the line, turns getting smaller
+        (recovery_end, 13, 2, 6),        # hears the warning, checks speed, turns back to the line
+        (route.length, 24, 6, 5),        # back on Garnet Bowl Right, skiing it out
     ]
-    points, truth = simulate(route, legs, seed=12)
+    points, truth = simulate(route, legs, seed=seed)
     return {
         "id": "scenario_2",
-        "description": "Advanced skier on Garnet Bowl Right in flat light drifts toward garnet-cliff-band-1",
+        "description": "Advanced skier on Garnet Bowl Right in flat light drifts toward garnet-cliff-band-1, "
+                       "takes the advice and skis Garnet Bowl Right out",
         "ability": "advanced",
-        "expected": "Garnet Bowl entry briefing, then guidance for garnet-cliff-band-1 in time to change line",
+        "expected": "briefing, guidance for garnet-cliff-band-1 in time to change line, warning, "
+                    "then \"You're on Garnet Bowl Right.\" and nothing else",
         "target_zone": "garnet-cliff-band-1",
+        "seed": seed,
         "rate_hz": RATE_HZ,
         "points": points,
         "truth": truth,
     }
+
+
+def nearest_on_line(p, line):
+    best = None
+    for a, b in zip(line, line[1:]):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length_sq = dx * dx + dy * dy or 1
+        t = max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length_sq))
+        q = (a[0] + t * dx, a[1] + t * dy)
+        if best is None or math.dist(p, q) < math.dist(p, best):
+            best = q
+    return best
+
+
+def add_gps_burst(points, truth, line, rng):
+    """A multipath burst: for 2-3 fixes the reported position is pulled 20-40 m toward
+    `line`, building up over the burst, then snaps back. The phone's reported accuracy
+    degrades with it, as real receivers do. Normal GPS noise carries on underneath.
+    Starts so the worst fix lands where the true track passes closest to the line."""
+    closest = min(range(len(truth)), key=lambda i: math.dist(
+        to_xy((truth[i]["lon"], truth[i]["lat"])), nearest_on_line(to_xy((truth[i]["lon"], truth[i]["lat"])), line)))
+    duration = rng.choice([2, 3])
+    magnitude = rng.uniform(20, 40)
+    profile = [0.65, 1.0] if duration == 2 else [0.55, 1.0, 0.8]
+    start = max(1, closest - 1)
+    for k, share in enumerate(profile):
+        i = start + k
+        true_xy = to_xy((truth[i]["lon"], truth[i]["lat"]))
+        target = nearest_on_line(true_xy, line)
+        d = math.dist(true_xy, target) or 1
+        ux, uy = (target[0] - true_xy[0]) / d, (target[1] - true_xy[1]) / d
+        pull, wobble = magnitude * share, rng.gauss(0, 3)  # a little sideways scatter too
+        x, y = to_xy((points[i]["lon"], points[i]["lat"]))
+        lat, lon = to_latlon((x + ux * pull - uy * wobble, y + uy * pull + ux * wobble))
+        points[i] = {**points[i], "lat": lat, "lon": lon,
+                     "accuracy_m": round(max(GPS_ACCURACY_M, pull * 0.8 + rng.gauss(0, 3)))}
+    return {"start_t": points[start]["t"], "end_t": points[start + duration - 1]["t"],
+            "magnitude_m": round(magnitude, 1), "toward": "garnet-cliff-band-1"}
+
+
+def scenario_3(seed=13):
+    """Scenario 1's clean line down Garnet Bowl Left, with a 2-3 s GPS burst that jumps the
+    reported position 20-40 m toward garnet-cliff-band-1 and snaps back."""
+    track = scenario_1(seed=seed)
+    cliff = osm_line(OSM_HAZARDS_FILE, "way/1167734535")  # garnet-cliff-band-1
+    burst = add_gps_burst(track["points"], track["truth"], cliff, random.Random(seed + 1000))
+    return {**track,
+            "id": "scenario_3",
+            "description": "Advanced skier on Garnet Bowl Left; a 2-3 s GPS burst jumps 20-40 m toward garnet-cliff-band-1",
+            "expected": "only the Garnet Bowl entry briefing; no guidance or warning from the GPS burst",
+            "target_zone": "garnet-cliff-band-1",
+            "gps_burst": burst}
 
 
 def trim(track, start_s, end_s=None):
@@ -234,7 +334,7 @@ def trim_for_demo(track):
 
 def main():
     TRACKS_DIR.mkdir(exist_ok=True)
-    for build in (scenario_1, scenario_2):
+    for build in (scenario_1, scenario_2, scenario_3):
         track = trim_for_demo(build())
         path = TRACKS_DIR / f"{track['id']}.json"
         path.write_text(json.dumps(track, indent=1))

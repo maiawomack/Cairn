@@ -27,6 +27,7 @@ import time
 import anthropic
 
 import config
+from geofence import offered_line
 
 SYSTEM_PROMPT = """You write one spoken line for an advanced or expert skier in the Glacier bowls \
 below Spanky's Ladder on Blackcomb. It is read aloud by text to speech into their earphones while \
@@ -99,19 +100,6 @@ def recommended_line(hazard_map, zone):
     return {"name": line["name"], "why": entry.get("why"), "line_note": entry.get("line_note")} if line else None
 
 
-def safe_line_for(hazard_map, zone):
-    """The line to offer for a cliff, as (name, line_note): the Route Planner's line for it
-    (its bowl's recommendation) if there is one, else the code-owned safe line, else (None, None)."""
-    route = hazard_map.get("route") or {}
-    guidance = next((g for g in route.get("cliff_guidance", []) if g["zone_id"] == zone["id"]), {})
-    line_id = guidance.get("line_id") or zone.get("safe_line")
-    line = next((l for l in hazard_map.get("safe_lines", []) if l["id"] == line_id), None)
-    if line is None:
-        return None, None
-    bowl = next((b for b in route.get("bowls", []) if b["recommended_line_id"] == line_id), {})
-    return line["name"], guidance.get("line_note") or bowl.get("line_note")
-
-
 def safe_exit_name(hazard_map, zone_id):
     """The zone's own code-owned safe exit, or None."""
     return next((e["name"] for e in hazard_map.get("safe_exits", []) if e["from_zone"] == zone_id), None)
@@ -148,7 +136,8 @@ def facts_for(alert, zone, hazard_map, ability, agent_spoken):
     facts.update({"zone_name": zone["name"], "hint": zone.get("hint"),
                   "distance_m": alert["distance_m"], "speed_kmh": alert["speed_kmh"]})
     if zone["type"] == "cliff":
-        facts["safe_line"], facts["line_note"] = safe_line_for(hazard_map, zone)
+        line = offered_line(hazard_map, zone) or {}
+        facts["safe_line"], facts["line_note"] = line.get("name"), line.get("line_note")
     else:
         facts["safe_exit"] = safe_exit_name(hazard_map, alert["zone_id"])
     if agent_spoken:
@@ -249,6 +238,13 @@ def _ms(started):
 async def decide(alert, hazard_map, ability):
     """Choose the spoken line for one geofence alert. Always returns a line."""
     zone = next(z for z in hazard_map["zones"] if z["id"] == alert["zone_id"])
+    offered = offered_line(hazard_map, zone) if zone["type"] == "cliff" else None
+    if alert["level"] == "on_line":
+        # A fixed, calm confirmation: nothing for Claude to word.
+        return {"t": alert["t"], "zone_id": alert["zone_id"], "level": "on_line",
+                "line": f"You're on {alert['line_name']}.", "path": "template", "claude_reason": "not asked",
+                "claude_ms": 0, "claude_line": None, "agent_line": None, "agent_line_ok": False,
+                "safe_line_id": alert["line_id"], "model": config.CLAUDE_MODEL}
     agent_source, agent_spoken = agent_line(hazard_map, alert, zone)
     facts = facts_for(alert, zone, hazard_map, ability, agent_spoken)
 
@@ -277,6 +273,7 @@ async def decide(alert, hazard_map, ability):
         "claude_line": claude_line,
         "agent_line": agent_spoken,
         "agent_line_ok": agent_ok,
+        "safe_line_id": (offered or {}).get("id"),  # the dashboard draws the offered line
         "model": config.CLAUDE_MODEL,
     }
 

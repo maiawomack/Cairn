@@ -99,13 +99,17 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         yield f"event: session\ndata: {json.dumps(start)}\n\n"
         try:
             async for message in replay(track, speed_at):
-                yield f"data: {json.dumps(message)}\n\n"
+                alerts = fence.update(message["data"]) if fence else []
                 if fence:
-                    for alert in fence.update(message["data"]):
-                        hub.publish("terrain", alert["level"], alert)
-                        task = asyncio.create_task(speak(alert))
-                        _speaking.add(task)
-                        task.add_done_callback(_speaking.discard)
+                    # The dashboard draws the skier on the smoothed track and the raw fix beside it.
+                    message["data"]["smoothed"] = fence.smoothed
+                    message["data"]["rejected"] = fence.last_rejected
+                yield f"data: {json.dumps(message)}\n\n"
+                for alert in alerts:
+                    hub.publish("terrain", alert["level"], alert)
+                    task = asyncio.create_task(speak(alert))
+                    _speaking.add(task)
+                    task.add_done_callback(_speaking.discard)
             yield "event: end\ndata: {}\n\n"
         finally:
             _replays.pop(session_id, None)
@@ -131,6 +135,29 @@ async def event_stream():
             yield f"data: {json.dumps(message)}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
+
+
+@app.get("/api/agents/state")
+def agents_state():
+    """Org chart data: last run and output per Creao role (data/agent_outputs/), last event per code box."""
+    outputs_dir = DATA_DIR / "agent_outputs"
+    runs_file = outputs_dir / "creao_runs.json"
+    runs = {r["role"]: r for r in json.loads(runs_file.read_text())} if runs_file.exists() else {}
+    state = {}
+    for role in ("conditions", "terrain", "route", "incident"):
+        output_file = outputs_dir / f"{role}.json"
+        state[role] = {
+            "last_run": runs.get(role),
+            "output": json.loads(output_file.read_text()) if output_file.exists() else None,
+        }
+    # Our code's boxes: the latest event in the in-memory history (last 200), nothing on disk,
+    # so they read "no alerts yet" after a restart.
+    code = {
+        "geofence": hub.latest("terrain", ("briefing", "guidance", "warning", "on_line")),
+        "coordinator": hub.latest("coordinator", ("decision",)),
+        "voice": hub.latest("voice", ("spoken", "unavailable", "error")),
+    }
+    return {"running": orchestrator.is_running(), "roles": state, "code": code}
 
 
 @app.post("/api/agents/run")

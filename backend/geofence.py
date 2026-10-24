@@ -38,6 +38,10 @@ def to_xy(lat, lon):
     return ((lon - LON0) * M_PER_DEG_LON, (lat - LAT0) * M_PER_DEG_LAT)
 
 
+def to_latlon(xy):
+    return round(LAT0 + xy[1] / M_PER_DEG_LAT, 7), round(LON0 + xy[0] / M_PER_DEG_LON, 7)
+
+
 def inside(p, ring):
     result = False
     for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
@@ -107,21 +111,42 @@ class Geofence:
         self.fixes = deque(maxlen=config.GEOFENCE_SMOOTHING_FIXES)
         self.streak = {}  # zone id -> consecutive fixes in range
         self.sent = set()  # (zone id, level) already alerted
+        self.rejected_in_a_row = 0
+        self.last_warning = None  # (t, zone id) of the latest warning
+        # The safe line each cliff alert offers, and the lines being watched for "on_line".
+        self.lines_offered = {z["id"]: offered_line(hazard_map, z) for z in hazard_map["zones"] if z["type"] == "cliff"}
+        self.watching = {}
+        self.last_rejected = None  # why the latest fix was left out of the fit, or None
+        self.smoothed = None  # (lat, lon) of the smoothed position
 
     def update(self, fix):
         """fix: {t, lat, lon}. Returns new alerts.
 
-        level is "briefing" (entered expert terrain), "guidance" (cliff on trajectory) or
-        "warning" (closure or boundary, or a cliff from inside or within CLIFF_STOP_M).
-        Each (zone, level) alerts once; a cliff can go from guidance to warning.
+        level is "briefing" (entered expert terrain), "guidance" (cliff on trajectory),
+        "warning" (closure or boundary, or a cliff from inside or within CLIFF_STOP_M), or
+        "on_line" (the skier reached the safe line a cliff alert offered).
+        Each (zone, level) alerts once; a cliff can go from guidance to warning. For
+        CLIFF_QUIET_AFTER_WARNING_S after any warning, guidance for other cliffs waits
+        (closures and the boundary still speak).
         """
         x, y = to_xy(fix["lat"], fix["lon"])
+        self.last_rejected = self._reject_reason(fix, (x, y))
+        if self.last_rejected:
+            # Left out of the fit, so nothing new can alert from it. For the dashboard, carry the
+            # smoothed position forward along the last good fit instead of freezing it.
+            if len(self.fixes) >= 3:
+                (px, py), speed, heading = fit_motion(list(self.fixes))
+                dt = fix["t"] - self.fixes[-1][0]
+                self.smoothed = to_latlon((px + math.sin(math.radians(heading)) * speed * dt,
+                                           py + math.cos(math.radians(heading)) * speed * dt))
+            return []
         self.fixes.append((fix["t"], x, y))
         if len(self.fixes) >= 3:
             position, speed, heading = fit_motion(list(self.fixes))
         else:
             position, speed, heading = (x, y), 0.0, None
 
+        self.smoothed = to_latlon(position)
         cliff_hits = self._cliff_hits(position, speed, heading)
         warnings = []
         for zone in self.zones:
@@ -148,7 +173,16 @@ class Geofence:
                 level = "warning" if hit["distance_m"] <= config.CLIFF_STOP_M else "guidance"
             if (zone["id"], level) in self.sent or (level == "guidance" and (zone["id"], "warning") in self.sent):
                 continue
+            if level == "guidance" and self.last_warning and self.last_warning[1] != zone["id"] \
+                    and fix["t"] - self.last_warning[0] < config.CLIFF_QUIET_AFTER_WARNING_S:
+                continue  # one urgent message at a time; it can still alert after the quiet period
             self.sent.add((zone["id"], level))
+            if level == "warning":
+                self.last_warning = (fix["t"], zone["id"])
+            if level in ("guidance", "warning") and zone["type"] == "cliff":
+                line = self.lines_offered.get(zone["id"])
+                if line and line["id"] not in self.watching:
+                    self.watching[line["id"]] = {**line, "zone_id": zone["id"], "streak": 0}
             warnings.append({
                 "t": fix["t"],
                 "level": level,
@@ -162,7 +196,61 @@ class Geofence:
                 "heading_deg": None if heading is None else round(heading),
                 "warning_distance_m": round(warn_m, 1),
             })
+        warnings.extend(self._on_line(fix, position, speed, heading, cliff_hits))
         return warnings
+
+    def _on_line(self, fix, position, speed, heading, cliff_hits):
+        """Confirm once when the skier comes back onto the safe line a cliff alert offered: off
+        the line since the alert, now holding on it, and no longer heading over that cliff."""
+        confirmed = []
+        for line_id, line in list(self.watching.items()):
+            near = min(distance_to_ring(position, [a, b, a]) for a, b in zip(line["path"], line["path"][1:]))
+            # Only a return counts: the skier must have been off the line since the alert.
+            line["left"] = line.get("left", False) or near > config.ON_LINE_M
+            settled = line["left"] and near <= config.ON_LINE_M and line["zone_id"] not in cliff_hits
+            line["streak"] = line["streak"] + 1 if settled else 0
+            if line["streak"] >= config.ON_LINE_CONFIRM_FIXES:
+                del self.watching[line_id]
+                # Back on a safe line: that cliff can alert again if the skier heads for it later.
+                self.sent -= {(line["zone_id"], "guidance"), (line["zone_id"], "warning")}
+                confirmed.append({
+                    "t": fix["t"], "level": "on_line", "zone_id": line["zone_id"], "zone_type": "cliff",
+                    "zone_name": line["name"], "line_id": line_id, "line_name": line["name"],
+                    "reason": "on the safe line", "distance_m": round(near, 1), "ahead_m": None,
+                    "speed_kmh": round(speed * 3.6, 1), "heading_deg": None if heading is None else round(heading),
+                    "warning_distance_m": 0.0,
+                })
+        return confirmed
+
+    def _reject_reason(self, fix, xy):
+        """Why a fix should be left out of the fit, or None.
+
+        Phones report a multipath burst as a short jump with degraded accuracy. A fix is
+        left out when its reported accuracy is worse than GEOFENCE_MAX_ACCURACY_M, or when
+        it lands more than GEOFENCE_JUMP_GATE_M from where the current fit predicts. Never
+        blind for long: after GEOFENCE_JUMP_ACCEPT_FIXES left out in a row, the fixes are
+        taken as real movement and the fit restarts from them.
+        """
+        reason = None
+        if fix.get("accuracy_m") is not None and fix["accuracy_m"] > config.GEOFENCE_MAX_ACCURACY_M:
+            reason = f"accuracy {fix['accuracy_m']} m"
+        elif len(self.fixes) >= 3:
+            (px, py), speed, heading = fit_motion(list(self.fixes))
+            dt = fix["t"] - self.fixes[-1][0]
+            predicted = (px + math.sin(math.radians(heading)) * speed * dt,
+                         py + math.cos(math.radians(heading)) * speed * dt)
+            jump = math.dist(predicted, xy)
+            if jump > config.GEOFENCE_JUMP_GATE_M:
+                reason = f"jump {jump:.0f} m"
+        if reason is None:
+            self.rejected_in_a_row = 0
+            return None
+        self.rejected_in_a_row += 1
+        if self.rejected_in_a_row >= config.GEOFENCE_JUMP_ACCEPT_FIXES:
+            self.rejected_in_a_row = 0
+            self.fixes.clear()
+            return None
+        return reason
 
     def _cliff_hits(self, position, speed, heading):
         """Cliffs the skier could go over: {zone id: hit}.
@@ -252,6 +340,20 @@ def _crossing_ahead(start, end, lines):
             if first is None or fraction < first:
                 first = fraction
     return first
+
+
+def offered_line(hazard_map, zone):
+    """The safe line a cliff alert offers: the Route Planner's line for this cliff (its bowl's
+    recommendation) if there is one, else the code-owned safe line. {id, name, path xy, line_note} or None."""
+    route = hazard_map.get("route") or {}
+    guidance = next((g for g in route.get("cliff_guidance", []) if g["zone_id"] == zone["id"]), {})
+    line_id = guidance.get("line_id") or zone.get("safe_line")
+    line = next((l for l in hazard_map.get("safe_lines", []) if l["id"] == line_id), None)
+    if line is None:
+        return None
+    bowl = next((b for b in route.get("bowls", []) if b["recommended_line_id"] == line_id), {})
+    return {"id": line["id"], "name": line["name"], "path": [to_xy(lat, lon) for lat, lon in line["path"]],
+            "line_note": guidance.get("line_note") or bowl.get("line_note")}
 
 
 def load_hazard_map():

@@ -40,6 +40,13 @@ GEOFENCE_NEAR_M = _number("GEOFENCE_NEAR_M", 15)
 GEOFENCE_PATH_MARGIN_M = _number("GEOFENCE_PATH_MARGIN_M", 10)
 # Consecutive smoothed fixes that must agree before warning, so one noisy point never warns.
 GEOFENCE_CONFIRM_FIXES = int(_number("GEOFENCE_CONFIRM_FIXES", 2))
+# GPS bursts (multipath) jump the reported position for a few fixes. Such fixes are left out
+# of the smoothing fit: reported accuracy worse than this, or landing this far from where the
+# fit predicts. After this many in a row they are accepted as real movement (never blind long):
+# 4, so a 2-3 s burst is left out entirely and the geofence is never blind for more than 3 s.
+GEOFENCE_MAX_ACCURACY_M = _number("GEOFENCE_MAX_ACCURACY_M", 15)
+GEOFENCE_JUMP_GATE_M = _number("GEOFENCE_JUMP_GATE_M", 20)
+GEOFENCE_JUMP_ACCEPT_FIXES = int(_number("GEOFENCE_JUMP_ACCEPT_FIXES", 4))
 
 
 # Closures sit right next to runs (Rock Alley passes them), so they only warn when the
@@ -61,6 +68,12 @@ CLIFF_EDGE_M = _number("CLIFF_EDGE_M", 8)
 # Extra look ahead rays this many degrees either side of the smoothed heading. Measured on 20
 # flat-light drifts: 0 deg gave guidance first in 16/20 (one 2 s before the edge), 6 deg in 20/20.
 CLIFF_RAY_SPREAD_DEG = _number("CLIFF_RAY_SPREAD_DEG", 6)
+# After any warning, guidance for other cliffs waits this long: one urgent message at a time.
+CLIFF_QUIET_AFTER_WARNING_S = _number("CLIFF_QUIET_AFTER_WARNING_S", 8)
+# "You're on <line>": the smoothed position within this distance of the offered safe line
+# for this many fixes in a row.
+ON_LINE_M = _number("ON_LINE_M", 12)
+ON_LINE_CONFIRM_FIXES = int(_number("ON_LINE_CONFIRM_FIXES", 2))
 
 
 def warning_distance_m(speed_m_s, zone_type="cliff"):
@@ -101,6 +114,11 @@ CARTESIA_VERSION = os.environ.get("CARTESIA_VERSION") or "2026-08-14"
 # Raw PCM the browser decodes itself; 16 bit at 24 kHz keeps each streamed chunk small.
 VOICE_SAMPLE_RATE = 24000
 VOICE_ENCODING = "pcm_s16le"
+# A short attention chime plays before the spoken audio. Warnings and guidance: the normal
+# chime; briefings: a softer one; confirmations ("You're on ..."): none. The dashboard
+# synthesizes the tones (frontend/app.js).
+VOICE_CHIME = {"warning": "normal", "guidance": "normal", "briefing": "soft", "on_line": None}
+
 # generation_config per style (Sonic treats these as guidance). speed 0.6-1.5, volume 0.5-2.0.
 VOICE_STYLES = {
     "firm": {"speed": 1.2, "volume": 1.4, "emotion": "determined"},  # warnings: firm and quick
