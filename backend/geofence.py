@@ -38,6 +38,10 @@ def to_xy(lat, lon):
     return ((lon - LON0) * M_PER_DEG_LON, (lat - LAT0) * M_PER_DEG_LAT)
 
 
+def to_latlon(xy):
+    return round(LAT0 + xy[1] / M_PER_DEG_LAT, 7), round(LON0 + xy[0] / M_PER_DEG_LON, 7)
+
+
 def inside(p, ring):
     result = False
     for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
@@ -107,6 +111,9 @@ class Geofence:
         self.fixes = deque(maxlen=config.GEOFENCE_SMOOTHING_FIXES)
         self.streak = {}  # zone id -> consecutive fixes in range
         self.sent = set()  # (zone id, level) already alerted
+        self.rejected_in_a_row = 0
+        self.last_rejected = None  # why the latest fix was left out of the fit, or None
+        self.smoothed = None  # (lat, lon) of the smoothed position
 
     def update(self, fix):
         """fix: {t, lat, lon}. Returns new alerts.
@@ -116,12 +123,23 @@ class Geofence:
         Each (zone, level) alerts once; a cliff can go from guidance to warning.
         """
         x, y = to_xy(fix["lat"], fix["lon"])
+        self.last_rejected = self._reject_reason(fix, (x, y))
+        if self.last_rejected:
+            # Left out of the fit, so nothing new can alert from it. For the dashboard, carry the
+            # smoothed position forward along the last good fit instead of freezing it.
+            if len(self.fixes) >= 3:
+                (px, py), speed, heading = fit_motion(list(self.fixes))
+                dt = fix["t"] - self.fixes[-1][0]
+                self.smoothed = to_latlon((px + math.sin(math.radians(heading)) * speed * dt,
+                                           py + math.cos(math.radians(heading)) * speed * dt))
+            return []
         self.fixes.append((fix["t"], x, y))
         if len(self.fixes) >= 3:
             position, speed, heading = fit_motion(list(self.fixes))
         else:
             position, speed, heading = (x, y), 0.0, None
 
+        self.smoothed = to_latlon(position)
         cliff_hits = self._cliff_hits(position, speed, heading)
         warnings = []
         for zone in self.zones:
@@ -163,6 +181,36 @@ class Geofence:
                 "warning_distance_m": round(warn_m, 1),
             })
         return warnings
+
+    def _reject_reason(self, fix, xy):
+        """Why a fix should be left out of the fit, or None.
+
+        Phones report a multipath burst as a short jump with degraded accuracy. A fix is
+        left out when its reported accuracy is worse than GEOFENCE_MAX_ACCURACY_M, or when
+        it lands more than GEOFENCE_JUMP_GATE_M from where the current fit predicts. Never
+        blind for long: after GEOFENCE_JUMP_ACCEPT_FIXES left out in a row, the fixes are
+        taken as real movement and the fit restarts from them.
+        """
+        reason = None
+        if fix.get("accuracy_m") is not None and fix["accuracy_m"] > config.GEOFENCE_MAX_ACCURACY_M:
+            reason = f"accuracy {fix['accuracy_m']} m"
+        elif len(self.fixes) >= 3:
+            (px, py), speed, heading = fit_motion(list(self.fixes))
+            dt = fix["t"] - self.fixes[-1][0]
+            predicted = (px + math.sin(math.radians(heading)) * speed * dt,
+                         py + math.cos(math.radians(heading)) * speed * dt)
+            jump = math.dist(predicted, xy)
+            if jump > config.GEOFENCE_JUMP_GATE_M:
+                reason = f"jump {jump:.0f} m"
+        if reason is None:
+            self.rejected_in_a_row = 0
+            return None
+        self.rejected_in_a_row += 1
+        if self.rejected_in_a_row >= config.GEOFENCE_JUMP_ACCEPT_FIXES:
+            self.rejected_in_a_row = 0
+            self.fixes.clear()
+            return None
+        return reason
 
     def _cliff_hits(self, position, speed, heading):
         """Cliffs the skier could go over: {zone id: hit}.

@@ -45,6 +45,7 @@ const style = {
     exits: { type: "geojson", data: "/data/safe_exits.geojson" },
     skier: { type: "geojson", data: emptyCollection() },
     "skier-trail": { type: "geojson", data: emptyCollection() },
+    "raw-gps": { type: "geojson", data: emptyCollection() },
   },
   terrain: { source: "dem-terrain", exaggeration: 1.3 },
   sky: {
@@ -189,6 +190,20 @@ const TOP_LAYERS = [
     paint: { "line-color": ROUTE_COLOR, "line-width": 2.5, "line-opacity": 0.85 },
   },
   {
+    // Raw GPS fixes as faint dots; ones the geofence left out of the fit get a red ring.
+    id: "raw-gps",
+    type: "circle",
+    source: "raw-gps",
+    paint: {
+      "circle-color": ["case", ["get", "rejected"], "rgba(0, 0, 0, 0)", "#6e6e6e"],
+      "circle-radius": ["case", ["get", "rejected"], 5, 2.5],
+      "circle-stroke-color": HAZARD_COLOR,
+      "circle-stroke-width": ["case", ["get", "rejected"], 1.5, 0],
+      "circle-opacity": ["interpolate", ["linear"], ["get", "age"], 1, 0.55, TRAIL_LENGTH, 0],
+      "circle-stroke-opacity": ["interpolate", ["linear"], ["get", "age"], 1, 0.9, TRAIL_LENGTH, 0.1],
+    },
+  },
+  {
     id: "skier-trail",
     type: "circle",
     source: "skier-trail",
@@ -289,6 +304,7 @@ const TARGET_PULSE_SECONDS = 6;
 function startReplay(scenarioId, speed = chosenSpeed) {
   if (replaySource) replaySource.close();
   const trail = [];
+  const raw = []; // recent raw GPS fixes, newest first
   let camera = null;
   setReplayButton(scenarioId);
   setSpeedButtons(speed);
@@ -300,24 +316,60 @@ function startReplay(scenarioId, speed = chosenSpeed) {
     if (session.target_zone) pulseTargetZone(session.target_zone);
   });
   replaySource.onmessage = (event) => {
-    const { lat, lon, playback_speed: playing } = JSON.parse(event.data).data;
+    const { lat: rawLat, lon: rawLon, smoothed, rejected, playback_speed: playing } = JSON.parse(event.data).data;
+    // The skier is drawn on the geofence's smoothed track; raw GPS fixes are faint dots beside it.
+    const [lat, lon] = smoothed || [rawLat, rawLon];
     trail.unshift([lon, lat]);
     trail.length = Math.min(trail.length, TRAIL_LENGTH + 1);
+    raw.unshift({ coordinates: [rawLon, rawLat], rejected: Boolean(rejected) });
+    raw.length = Math.min(raw.length, TRAIL_LENGTH);
     map.getSource("skier").setData(pointCollection([trail[0]]));
     map.getSource("skier-trail").setData(pointCollection(trail.slice(1)));
+    map.getSource("raw-gps").setData(rawCollection(raw));
+    showIgnoredJump(rejected ? [rawLon, rawLat] : null, rejected);
     showPlaybackSpeed(playing);
 
     // Smooth the camera so GPS noise doesn't shake the view.
     camera = camera
       ? [camera[0] + (lon - camera[0]) * CAMERA_SMOOTHING, camera[1] + (lat - camera[1]) * CAMERA_SMOOTHING]
       : [lon, lat];
-    map.easeTo({ center: camera, zoom: FOLLOW_ZOOM, duration: 1000 / playing, easing: (t) => t });  };
+    map.easeTo({ center: camera, zoom: FOLLOW_ZOOM, duration: 1000 / playing, easing: (t) => t });
+  };
   // The server sends "end" when the track is done; close so EventSource doesn't reconnect and replay again.
   replaySource.addEventListener("end", stopReplay);
   replaySource.onerror = stopReplay;
 }
 
+function rawCollection(fixes) {
+  return {
+    type: "FeatureCollection",
+    features: fixes.map((fix, age) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: fix.coordinates },
+      properties: { age: age + 1, rejected: fix.rejected },
+    })),
+  };
+}
+
+// A tag on a raw fix the geofence left out of the smoothed track (a GPS jump).
+let ignoredTag = null;
+
+function showIgnoredJump(coordinates, reason) {
+  if (!coordinates) {
+    ignoredTag?.remove();
+    ignoredTag = null;
+    return;
+  }
+  if (!ignoredTag) {
+    const el = Object.assign(document.createElement("div"), { className: "ignored-tag" });
+    ignoredTag = new maplibregl.Marker({ element: el, anchor: "left", offset: [8, 0] }).setLngLat(coordinates).addTo(map);
+  }
+  ignoredTag.setLngLat(coordinates);
+  ignoredTag.getElement().textContent = `GPS jump ignored (${reason})`;
+}
+
 function stopReplay() {
+  showIgnoredJump(null);
   replaySource?.close();
   replaySession = null;
   setReplayButton(null);

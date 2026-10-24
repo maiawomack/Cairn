@@ -40,6 +40,13 @@ GEOFENCE_NEAR_M = _number("GEOFENCE_NEAR_M", 15)
 GEOFENCE_PATH_MARGIN_M = _number("GEOFENCE_PATH_MARGIN_M", 10)
 # Consecutive smoothed fixes that must agree before warning, so one noisy point never warns.
 GEOFENCE_CONFIRM_FIXES = int(_number("GEOFENCE_CONFIRM_FIXES", 2))
+# GPS bursts (multipath) jump the reported position for a few fixes. Such fixes are left out
+# of the smoothing fit: reported accuracy worse than this, or landing this far from where the
+# fit predicts. After this many in a row they are accepted as real movement (never blind long):
+# 4, so a 2-3 s burst is left out entirely and the geofence is never blind for more than 3 s.
+GEOFENCE_MAX_ACCURACY_M = _number("GEOFENCE_MAX_ACCURACY_M", 15)
+GEOFENCE_JUMP_GATE_M = _number("GEOFENCE_JUMP_GATE_M", 20)
+GEOFENCE_JUMP_ACCEPT_FIXES = int(_number("GEOFENCE_JUMP_ACCEPT_FIXES", 4))
 
 
 # Closures sit right next to runs (Rock Alley passes them), so they only warn when the

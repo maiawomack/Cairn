@@ -99,13 +99,17 @@ async def replay_stream(scenario_id: str, speed: float = Query(1.0, gt=0, le=20)
         yield f"event: session\ndata: {json.dumps(start)}\n\n"
         try:
             async for message in replay(track, speed_at):
-                yield f"data: {json.dumps(message)}\n\n"
+                alerts = fence.update(message["data"]) if fence else []
                 if fence:
-                    for alert in fence.update(message["data"]):
-                        hub.publish("terrain", alert["level"], alert)
-                        task = asyncio.create_task(speak(alert))
-                        _speaking.add(task)
-                        task.add_done_callback(_speaking.discard)
+                    # The dashboard draws the skier on the smoothed track and the raw fix beside it.
+                    message["data"]["smoothed"] = fence.smoothed
+                    message["data"]["rejected"] = fence.last_rejected
+                yield f"data: {json.dumps(message)}\n\n"
+                for alert in alerts:
+                    hub.publish("terrain", alert["level"], alert)
+                    task = asyncio.create_task(speak(alert))
+                    _speaking.add(task)
+                    task.add_done_callback(_speaking.discard)
             yield "event: end\ndata: {}\n\n"
         finally:
             _replays.pop(session_id, None)
