@@ -49,6 +49,35 @@
       text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
     }
 
+    .agents-panel {
+      position: absolute; top: 12px; right: 56px; z-index: 1; width: 290px;
+      background: rgba(243, 237, 224, 0.92); border-radius: 6px; padding: 10px 12px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); font-size: 13px;
+    }
+    .agents-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+    .agents-panel button {
+      font: inherit; font-size: 12px; color: var(--slate); cursor: pointer;
+      background: transparent; border: 1px solid rgba(59, 66, 80, 0.35); border-radius: 4px; padding: 2px 8px;
+    }
+    .agents-panel button:disabled { opacity: 0.5; cursor: default; }
+    .org-chart { list-style: none; margin: 8px 0; padding: 0; }
+    .org-chart li {
+      margin: 3px 0 3px 14px; padding: 3px 8px; border-left: 3px solid rgba(59, 66, 80, 0.25);
+      display: flex; justify-content: space-between; transition: background 0.3s, border-color 0.3s;
+    }
+    .org-chart li.founder { margin-left: 0; font-weight: bold; }
+    .org-chart li small { color: rgba(59, 66, 80, 0.7); font-family: ui-monospace, Menlo, monospace; }
+    .org-chart li.running { border-color: var(--route); background: rgba(91, 63, 140, 0.12); }
+    .org-chart li.done { border-color: #4f7d4c; }
+    .org-chart li.failed { border-color: var(--hazard); background: rgba(178, 58, 58, 0.1); }
+    .conditions { border-top: 1px solid rgba(59, 66, 80, 0.2); padding-top: 6px; line-height: 1.5; }
+    .agent-log {
+      list-style: none; margin: 6px 0 0; padding: 6px 0 0; max-height: 160px; overflow-y: auto;
+      border-top: 1px solid rgba(59, 66, 80, 0.2);
+      font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.5;
+    }
+    .agent-log time { color: rgba(59, 66, 80, 0.6); margin-right: 4px; }
+
     .maplibregl-popup.hover-label .maplibregl-popup-content {
       padding: 3px 8px; font-family: Georgia, serif; font-size: 13px;
       background: rgba(243, 237, 224, 0.95); color: var(--slate);
@@ -67,6 +96,21 @@
       <button type="button" data-scenario="scenario_1">Scenario 1</button>
       <button type="button" data-scenario="scenario_2">Scenario 2</button>
     </div>
+  </div>
+  <div class="agents-panel">
+    <div class="agents-header">
+      <span>Creao agents</span>
+      <button type="button" id="run-agents">Run agents</button>
+    </div>
+    <ol class="org-chart">
+      <li class="founder">Maia <small>founder</small></li>
+      <li data-role="conditions">Conditions Analyst <small></small></li>
+      <li data-role="terrain">Terrain Scout <small></small></li>
+      <li data-role="route">Route Planner <small></small></li>
+      <li data-role="incident">Incident Responder <small></small></li>
+    </ol>
+    <div id="conditions" class="conditions"></div>
+    <ul id="agent-log" class="agent-log"></ul>
   </div>
   <script type="module" src="/static/app.js"></script>
 </body>

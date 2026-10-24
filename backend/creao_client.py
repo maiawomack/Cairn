@@ -160,6 +160,41 @@ def output_json(run):
     raise CreaoError("; ".join(errors))
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Stop at redirects so the API key is never sent to the storage host."""
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def download_artifact(role, artifact):
+    """Fetch one run artifact (docs: GET the artifact url with the key, follow the 302).
+
+    The key goes only to agent.creao.ai; the temporary storage URL is fetched without it.
+    """
+    url = artifact.get("url", "")
+    if not url.startswith("https://agent.creao.ai/"):
+        raise CreaoError(f"refusing to send the API key to {url[:60]!r}")
+    _, key = _agent(role)
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}", "User-Agent": USER_AGENT})
+    try:
+        with urllib.request.build_opener(_NoRedirect).open(request, timeout=60) as response:
+            return response.read()
+    except urllib.error.HTTPError as error:
+        if error.code not in (301, 302, 303, 307, 308) or not error.headers.get("Location"):
+            detail = error.read().decode(errors="replace")[:300]
+            raise CreaoError(f"artifact download -> HTTP {error.code}: {detail}") from None
+        location = error.headers["Location"]
+    with urllib.request.urlopen(urllib.request.Request(location, headers={"User-Agent": USER_AGENT}), timeout=60) as response:
+        return response.read()
+
+
+def json_artifacts(role, run):
+    """Parsed JSON of every application/json artifact in the run, in order."""
+    artifacts = (run.get("result") or {}).get("artifacts") or []
+    return [json.loads(download_artifact(role, a)) for a in artifacts if a.get("type") == "application/json"]
+
+
 def server_duration_s(run):
     """Run time as Creao recorded it (createdAt to completedAt), or None if missing."""
     try:
@@ -193,7 +228,70 @@ def run_agent(role, inputs, on_status=None):
     }
     if run.get("status") != "completed":
         raise CreaoError(f"{role} run {run_id} ended {run.get('status')}: errorCode={run.get('errorCode')}")
-    return output_json(run), timing, run
+    return agent_output(role, run), timing, run
+
+
+# Keys each role's deliverable must have. result.text often holds only the agent's
+# memory persist_fields, so a JSON object is only accepted if it has these.
+REQUIRED_KEYS = {
+    "conditions": {"weather", "avalanche"},
+    "terrain": {"zones"},
+    "route": {"plans"},
+    "incident": set(),
+}
+
+
+def _json_blocks(text):
+    return [json.loads(b) for b in reversed(re.findall(r"```json\s*\n(.*?)```", text or "", re.DOTALL))
+            if _parses(b)]
+
+
+def _parses(text):
+    try:
+        json.loads(text)
+        return True
+    except json.JSONDecodeError:
+        return False
+
+
+def _candidates(role, run):
+    """JSON objects the run produced, in the order we trust them. Artifacts download lazily."""
+    result = run.get("result") or {}
+    artifacts = result.get("artifacts") or []
+    for artifact in reversed(artifacts):
+        if artifact.get("type") == "application/json":
+            yield json.loads(download_artifact(role, artifact))
+    for artifact in reversed(artifacts):
+        if artifact.get("type", "").startswith("text/"):
+            yield from _json_blocks(download_artifact(role, artifact).decode(errors="replace"))
+    yield from _json_blocks(result.get("chatText"))
+    yield from _json_blocks(result.get("text"))
+    try:
+        bare = json.loads((result.get("text") or "").strip())
+    except json.JSONDecodeError:
+        return
+    if isinstance(bare, dict):
+        yield bare
+        # e.g. the Conditions Analyst's conditions_json: a JSON document stored as a string
+        for value in bare.values():
+            if isinstance(value, str) and value.lstrip().startswith("{") and _parses(value):
+                yield json.loads(value)
+
+
+def agent_output(role, run):
+    """The agent's JSON deliverable: the first JSON object with the role's required keys.
+
+    Seen on real runs (2026-10-24): the deliverable may be a JSON artifact, a ```json block
+    in a markdown artifact, a ```json block in chatText, or a JSON string inside result.text,
+    and it moves between runs of the same agent.
+    """
+    required = REQUIRED_KEYS[role]
+    seen = []
+    for candidate in _candidates(role, run):
+        if isinstance(candidate, dict) and required <= candidate.keys():
+            return candidate
+        seen.append(sorted(candidate) if isinstance(candidate, dict) else type(candidate).__name__)
+    raise CreaoError(f"{role}: no JSON with keys {sorted(required)} in the run's artifacts or text; found {seen}")
 
 
 def main():

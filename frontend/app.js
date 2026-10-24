@@ -363,3 +363,87 @@ for (const checkbox of document.querySelectorAll(".layer-toggle input")) {
     }
   });
 }
+
+// ---- Creao agents panel: run button, org chart, conditions, log ----
+
+const LOG_LENGTH = 8;
+const runButton = document.getElementById("run-agents");
+
+runButton.addEventListener("click", async () => {
+  runButton.disabled = true;
+  const response = await fetch("/api/agents/run", { method: "POST" });
+  if (response.status === 409) addLogLine({ from: "creao:orchestrator", type: "already running", time: new Date().toISOString() });
+});
+
+// Agent messages arrive over Server Sent Events, recent history first.
+const agentEvents = new EventSource("/api/events");
+agentEvents.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  const role = message.from.replace("creao:", "");
+  const node = document.querySelector(`.org-chart [data-role="${role}"]`);
+  if (node) updateOrgNode(node, message);
+  if (role === "orchestrator") {
+    if (message.type === "started") {
+      for (const li of document.querySelectorAll(".org-chart [data-role]")) setOrgState(li, "", "");
+    }
+    runButton.disabled = message.type === "started";
+    if (message.type === "finished") loadConditions();
+  }
+  if (message.type !== "output") addLogLine(message);
+};
+
+function updateOrgNode(node, message) {
+  const { type, data } = message;
+  if (type === "started") setOrgState(node, "running", "starting");
+  if (type === "status") setOrgState(node, "running", `${data.status} ${Math.round(data.elapsed_s)} s`);
+  if (type === "finished") setOrgState(node, "done", `${data.duration_s ?? data.wall_s} s`);
+  if (type === "failed") setOrgState(node, "failed", "failed");
+}
+
+function setOrgState(node, state, label) {
+  node.classList.remove("running", "done", "failed");
+  if (state) node.classList.add(state);
+  node.querySelector("small").textContent = label;
+}
+
+function addLogLine(message) {
+  const list = document.getElementById("agent-log");
+  const item = document.createElement("li");
+  const time = document.createElement("time");
+  time.textContent = new Date(message.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const detail = message.data?.error || message.data?.status || "";
+  item.append(time, `${message.from.replace("creao:", "")} ${message.type} ${detail}`.trim());
+  list.prepend(item);
+  while (list.children.length > LOG_LENGTH) list.lastChild.remove();
+}
+
+// Conditions from the latest hazard map, falling back to the demo copy.
+async function loadConditions() {
+  let hazardMap = null;
+  for (const url of ["/data/hazard_map.json", "/data/hazard_map.cached.json"]) {
+    const response = await fetch(url, { cache: "no-store" });
+    if (response.ok) {
+      hazardMap = await response.json();
+      break;
+    }
+  }
+  const box = document.getElementById("conditions");
+  if (!hazardMap) {
+    box.textContent = "No hazard map yet. Run agents.";
+    return;
+  }
+  const { date, weather = {}, avalanche = {} } = hazardMap.conditions;
+  const ratings = [avalanche.alpine, avalanche.treeline, avalanche.below_treeline];
+  // Never substitute a rating: unknown stays unknown (CLAUDE.md).
+  const avalancheLine = ratings.every((r) => r == null)
+    ? "Avalanche rating: not available for this date"
+    : `Avalanche: alpine ${avalanche.alpine ?? "n/a"}, treeline ${avalanche.treeline ?? "n/a"}, below treeline ${avalanche.below_treeline ?? "n/a"}`;
+  const lines = [
+    `${date} (${hazardMap.conditions.mode})`,
+    `${weather.temp_c ?? "?"} °C, wind ${weather.wind_kmh ?? "?"} km/h, gusts ${weather.wind_gust_kmh ?? "?"} km/h, new snow ${weather.new_snow_cm ?? "?"} cm`,
+    avalancheLine,
+  ];
+  box.replaceChildren(...lines.map((line) => Object.assign(document.createElement("div"), { textContent: line })));
+}
+
+loadConditions();

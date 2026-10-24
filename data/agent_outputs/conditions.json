@@ -1,0 +1,43 @@
+{
+ "conditions": {
+  "generated_at": "2026-02-22T12:00:00-08:00",
+  "mode": "replay",
+  "date": "2026-02-22",
+  "resort_operating": null,
+  "weather": {
+   "temp_c": -6.7,
+   "wind_kmh": 6.6,
+   "wind_gust_kmh": 51.8,
+   "visibility_km": null,
+   "new_snow_cm": 22.3,
+   "notes": "Historical reanalysis for 2026-02-22; values at 12:00 local, new snow = whole calendar day. Visibility is not published in the Open-Meteo archive, so it is null. Day range -9.2 to -6.2 C, max wind 8.6 km/h with gusts to 51.8 km/h."
+  },
+  "avalanche": {
+   "alpine": null,
+   "treeline": null,
+   "below_treeline": null,
+   "problems": []
+  },
+  "closures": [
+   {
+    "area": "In-bounds closures (Spanky's Ladder / Blackcomb Glacier area)",
+    "status": "unavailable",
+    "reason": "No archive of past resort closure notices is published, so closures for this date could not be verified.",
+    "source": "n/a"
+   }
+  ],
+  "risk_summary": "This is a replay of 2026-02-22, so these are historical conditions rather than a live assessment, and no archived Avalanche Canada forecast exists for this date. Conditions: -6.7 C at 2280 m, wind 6.6 km/h, 22.3 cm new snow, visibility not recorded; in-bounds operating status could not be verified.",
+  "notes_for_terrain_scout": [
+   "No archived danger ratings or problems for this date; hazard unknown.",
+   "Visibility unrecorded; enter Spanky's Ladder only with clear sightlines to the cliff bands.",
+   "Recent loading may hide ice and wind-affected snow near the ladder entrance."
+  ],
+  "sources": [
+   "Open-Meteo historical archive API (ERA5 reanalysis, America/Vancouver)",
+   "https://archive-api.open-meteo.com/v1/archive?latitude=50.08&longitude=-122.88&elevation=2280",
+   "https://api.avalanche.ca/forecasts/en/products/point?lat=50.08&long=-122.88",
+   "https://avalanche.ca/early-season-conditions"
+  ]
+ },
+ "planner_notes": null
+}
