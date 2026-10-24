@@ -1,8 +1,17 @@
 # Cairn
 
-Cairn is a voice safety agent for skiers. It warns intermediate skiers before they ski into cliff terrain and talks them onto a safe line. Built solo by Maia at Cal Hacks 13 (submission due Sunday Oct 25, 10am PT).
+Cairn is a voice safety agent for advanced and expert skiers. It helps them ski Spanky's Ladder and the Glacier bowls (Garnet, Ruby, Diamond, Sapphire) on Blackcomb safely: it briefs them as they enter expert terrain, and when a cliff band is on their line it names the hazard and the safe line in time to change course. It never tries to talk them out of expert terrain. Built solo by Maia at Cal Hacks 13 (submission due Sunday Oct 25, 10am PT).
 
 Why it exists: two years ago a family friend skied off a cliff at Spanky's Ladder on Whistler Blackcomb and broke his jaw in four places. The demo is scoped to that area.
+
+## Who it's for and how it talks
+
+- Community: advanced and expert skiers who chose this terrain. Cairn is a partner on the mountain, not a gatekeeper.
+- Tone: calm, brief, specific. Name the hazard and the line; never lecture, never call terrain too hard, never suggest leaving it.
+- Entering expert terrain: a short, calm briefing (today's conditions, the main hazards in the area). Never a warning.
+- Cliffs: guidance on trajectory, naming the hazard and the safe line ("Cliff band below. Move to the Garnet Bowl Left line."). "Stop now" only when the skier is inside the cliff zone or within 15 m of it.
+- Closures and the ski area boundary: hard warnings.
+- Unknown avalanche rating: say it isn't available; never substitute one.
 
 ## How to work with me
 
@@ -16,7 +25,7 @@ Why it exists: two years ago a family friend skied off a cliff at Spanky's Ladde
 
 ## The one thing that must always work
 
-Scenario 2: a simulated intermediate skier drifts toward the cliff band and hears a spoken warning plus a safe line, early enough to stop. Protect this flow above everything else.
+Scenario 2: a simulated advanced skier in Garnet Bowl drifts toward a cliff band in flat light and hears guidance naming the hazard and the safe line, early enough to change line. Protect this flow above everything else.
 
 ## Architecture
 
@@ -35,7 +44,7 @@ The Route Planner's output is the hazard map JSON that the fast path runs on. Wi
 
 GPS replay → smoothing → geofence check against the hazard map → Claude writes the spoken warning and reroute → Cartesia Sonic speaks it → dashboard shows everything.
 
-Hard rule: geofence hits inside a cliff zone ALWAYS trigger a warning, even if Claude fails, is slow, or disagrees. Claude chooses the wording and the reroute, never whether a cliff exists. If Claude takes longer than about 1.5 seconds, speak a template warning from the hazard zone instead.
+Hard rule: a cliff on the skier's trajectory ALWAYS triggers a spoken alert (guidance, or a "stop" warning inside the zone or within 15 m), even if Claude fails, is slow, or disagrees. Claude chooses the wording and the safe line to name, never whether a cliff exists. If Claude takes longer than about 1.5 seconds, speak a template line from the hazard zone instead.
 
 Hard rule: every zone in `data/hazard_zones.geojson` always stays in the hazard map. Agents (Creao or Claude) can annotate zones (severity, applies_to, hint) but can never remove a zone, so no agent can make a cliff disappear. The merge step enforces this.
 
@@ -79,7 +88,7 @@ cairn/
 
 ## Data formats
 
-Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo mode). The merge step owns this schema, not any single agent. It combines the Conditions Analyst output, the Terrain Scout zone annotations, the Route Planner plans, and the geometry from `hazard_zones.geojson` and `safe_exits.geojson`:
+Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo mode). The merge step owns this schema, not any single agent. It combines the Conditions Analyst output, the Terrain Scout zone annotations, the Route Planner's route output, and the geometry from `hazard_zones.geojson` and `safe_exits.geojson`:
 
 ```json
 {
@@ -106,11 +115,10 @@ Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo 
   "safe_exits": [
     { "id": "spankys-cliff-band-1-exit", "from_zone": "spankys-cliff-band-1", "name": "Exit to Rock Alley", "path": [[lat, lon], "..."] }
   ],
-  "plans": {
-    "beginner":     { "off_limits": ["zone ids"], "reroutes": [{ "zone_id": "...", "exit_id": "...", "spoken": "words to say" }] },
-    "intermediate": { "off_limits": [], "reroutes": [] },
-    "advanced":     { "off_limits": [], "reroutes": [] },
-    "expert":       { "off_limits": [], "reroutes": [] }
+  "route": {
+    "bowls": [{ "zone_id": "garnet-bowl", "recommended_line_id": "garnet-bowl-right-line", "why": "..." }],
+    "cliff_guidance": [{ "zone_id": "garnet-cliff-band-1", "line_id": null, "spoken": "words to say" }],
+    "hard_limits": [{ "zone_id": "spankys-closure-1", "spoken": "words to say" }]
   },
   "notes_for_incident_responder": "string (Route Planner)"
 }
@@ -118,20 +126,28 @@ Hazard map (`data/hazard_map.json`, copied to `hazard_map.cached.json` for demo 
 
 Agent outputs, each the last ```json block in the run's result text:
 - Conditions Analyst: the full conditions document is the run's JSON artifact (`result.artifacts`, type application/json): `{ generated_at, mode, date, resort_operating, weather, avalanche, closures, notes_for_terrain_scout, risk_summary, sources }`. It becomes `conditions` (real nulls) and is what the Terrain Scout receives. `result.text` varies between runs (sometimes only flat form fields with the string "null", sometimes also a smaller `conditions_json` and `planner_notes`), so it is only used for `planner_notes` when present. Download artifacts with the key only to agent.creao.ai; follow the 302 to storage without the key.
-- Terrain Scout: `{ date, zones: [{ id, active, severity, applies_to, hint }] }`, merged into `zones` by id. Zone ids the Terrain Scout invents are ignored. A cliff stays `active: true` even if the Terrain Scout says otherwise.
+- Terrain Scout (v1.1.0): `{ date, based_on_conditions, zones: [{ id, active, severity, hint, briefing }], notes_for_route_planner }`, merged into `zones` by id (`briefing` is the spoken entry briefing used when Claude's is rejected). Zone ids the Terrain Scout invents are ignored. A cliff stays `active: true` even if the Terrain Scout says otherwise.
 
 Avalanche rating: never substitute a rating. When the Conditions Analyst returns null (for example, no Avalanche Canada archive for a replay date), the rating stays null, the dashboard shows "Avalanche rating: not available for this date", and spoken wording may treat the unknown rating as a reason for caution. Unknown never changes which zones warn.
-- Route Planner: `{ date, based_on_terrain, plans: { beginner, intermediate, advanced, expert: { off_limits: [zone ids], reroutes: [{ zone_id, exit_id, spoken }] } }, notes_for_incident_responder }`, merged into `plans` and `notes_for_incident_responder`. Off-limits or reroute entries that name an unknown zone or exit id are dropped (logged), never invented.
+- Route Planner (safe lines version): `{ date, bowls: [{ bowl_id, recommended_line_id, why, line_note }], cliff_guidance: [{ zone_id, line_id, spoken, line_note }], hard_limits: [{ zone_id, spoken }], notes_for_incident_responder }`, merged into `route` and `notes_for_incident_responder`. `bowl_id` may be the bowl's name or id. Entries naming an unknown zone or safe line are dropped (logged), never invented. Its spoken lines stand in for Claude's when they pass the same checks. A bowl's recommended line is the line for every cliff in that line's `for_zones`: the merge fills or overrides `cliff_guidance.line_id` with it (logged), so guidance never contradicts the recommendation. `line_note` (max 10 words, e.g. "Wind loaded today, ski it with care.") carries a concern about the recommended line; longer notes are dropped. A line is never called risky without the safest available one being offered.
 
-Where the deliverable lands moves between runs of the same agent (seen 2026-10-24): a JSON artifact, a ```json block in a markdown artifact, a ```json block in `chatText`, or a JSON string inside `result.text`. `result.text` is often just the agent's memory `persist_fields`. `creao_client.agent_output` takes the first JSON object with the role's required keys (conditions: weather + avalanche; terrain: zones; route: plans) and fails loudly otherwise, so a wrong shape never reaches the merge. Known gap: the Route Planner currently writes its plan only as markdown tables (no ```json block); fix it in Creao to end with the JSON above.
+Where the deliverable lands moves between runs of the same agent (seen 2026-10-24): a JSON artifact, a ```json block in a markdown artifact, a ```json block in `chatText`, or a JSON string inside `result.text`. `result.text` is often just the agent's memory `persist_fields`. `creao_client.agent_output` takes the first JSON object with the role's required keys (conditions: weather + avalanche; terrain: zones; route: bowls + cliff_guidance) and fails loudly otherwise, so a wrong shape never reaches the merge. (The Route Planner's markdown-only output was fixed in Creao on 2026-10-24; it now returns JSON.)
 
-Agent inputs (textarea fields are JSON strings): Conditions `{mode, date}`; Terrain Scout `{conditions_json, hazard_zones: [{id, type, name}]}`; Route Planner `{terrain_json, safe_exits_json: [{id, from_zone, name}], zone_types: {id: type}}`. The orchestrator saves each agent's parsed output in `data/agent_outputs/`, so `python backend/hazard_map.py` can rebuild the map without spending credits.
+Agent inputs (textarea fields are JSON strings): Conditions `{mode, date}`; Terrain Scout `{conditions_json, hazard_zones: [{id, type, name}]}`; Route Planner `{terrain_json, safe_lines_json: [{id, name, bowl, for_zones}], zone_types: {id: type}}`. The orchestrator saves each agent's parsed output in `data/agent_outputs/`, so `python backend/hazard_map.py` can rebuild the map without spending credits.
 
 Geometry (zone polygons, exit paths) always comes from the geojson files, never from an agent. Every zone in `hazard_zones.geojson` appears in the map even if the Terrain Scout leaves it out, so a cliff can never disappear because an agent skipped it. The fast path reads only this merged shape.
 
 Hazard zones (`data/hazard_zones.geojson`) are generated by `backend/build_hazard_zones.py` from the OSM cliffs and closures within 500 m of Spanky's Ladder, plus one expert_terrain zone for the Ladder entrance. Each feature has `id`, `type` (cliff | closure | expert_terrain | boundary), `name` and `osm_id`. Never edit the geojson by hand; a rerun overwrites it. Manual changes (ids, names, types, which OSM ways become zones) go in the `ZONES` id/name table in that script, then rerun it. Keep ids stable once they are in Creao.
 
-Geofence (`backend/geofence.py`, tuning in `backend/config.py`): a least squares fit over the last 5 fixes gives position, speed and heading. Which zones alert a skier comes from the Route Planner's plan for their ability: `off_limits` zones warn; for advanced and expert, a reroute with `exit_id: null` is a one time calm heads up, not a warning. For beginner and intermediate, other reroute zones also warn and an active cliff always warns. Until the Route Planner has run (`complete: false`), every active zone whose `applies_to` includes the ability warns. Cliffs, expert terrain and boundaries warn within 30 m + speed x 8 s after 2 agreeing fixes; closures need a sustained heading (5 fixes) and a shorter look ahead (15 m + speed x 4 s). `spankys-ladder-entrance` has a 25 m Rock Alley corridor cut out (`build_hazard_zones.py`), so skiers on the run are outside it.
+Geofence (`backend/geofence.py`, tuning in `backend/config.py`): a least squares fit over the last 5 fixes gives position, speed and heading. The zone type decides how a zone alerts, for every ability (the Route Planner's plan only supplies wording): expert terrain gives a `briefing` once on entry; cliffs give `guidance` on trajectory and a `warning` only inside the cliff zone or within `CLIFF_STOP_M` (15 m); closures and the boundary give hard `warning`s. Cliffs are directional: OSM draws them with the drop on the right, so a cliff alerts only when the path ahead (30 m + speed x 8 s, rays at +-6 degrees) crosses its line from the high side, only the first cliff crossed counts, and being on the high side within `CLIFF_EDGE_M` (8 m) always alerts. Below a cliff is never an alert. Closures need a sustained heading (5 fixes), a 15 m + speed x 4 s look ahead, 5 m near and no path margin. `spankys-ladder-entrance` has a 25 m Rock Alley corridor cut out (`build_hazard_zones.py`).
+
+Coordinator (`backend/coordinator.py`): on each alert, Claude (`CLAUDE_MODEL`, default `claude-haiku-5-5`, effort low, thinking off, no retries) gets facts for the alert level and returns one spoken line: a `briefing` (at most 30 words: conditions and up to two main hazards of the area), `guidance` (the hazard and the safe line from `safe_lines.geojson`, never "stop"), or a `warning` (may say "Stop now", under 15 words). A line is rejected if it is too long, says "stop" outside a warning, names or knows a safe line without offering it ("move to", "take"...), or uses a direction word (left, right, uphill, back, ...) that isn't in its facts. If Claude hasn't answered in 1.5 s, errors, refuses, or its line is rejected, the Route Planner's line is used if it passes the same checks, otherwise a fixed template. Every decision is posted to the dashboard log as `coordinator` / `decision` with `path` (claude | route_planner | template) and `claude_reason`.
+
+Voice (`backend/voice.py`): the coordinator's line streams through Sonic (`sonic-3.6`, cartesia SDK 4.2.0, `cartesia-version` header) over the WebSocket TTS API as raw `pcm_s16le` at 24 kHz, relayed to the dashboard as `voice` / `chunk` messages (live only, not kept in the log history) and played gaplessly with Web Audio. Warnings: the alert firm and quick (`determined`, speed 1.2, volume 1.4), the final safe line or exit sentence calm. Guidance: clear and confident (`confident`, speed 1.05, volume 1.25). Briefings: calm. Styles live in `config.VOICE_STYLES`. If Cartesia is not configured or errors, the dashboard speaks the line with the browser's speech synthesis, so a warning is never silent. The banner on the map shows the exact words from the coordinator decision.
+
+Safe lines (`backend/build_safe_lines.py`, `data/safe_lines.geojson`): OSM downhill runs mostly inside a Glacier bowl that cross no cliff line and stay 5 m clear of every cliff and closure zone. Each cliff gets the nearest safe line in a bowl that borders it; guidance names it. These replace exits like Rock Alley for cliffs. They are proposals: review them before relying on them.
+
+Replay presentation: scenario tracks are trimmed by `tracks.py` to start 25 s before their first alert (a track with no alert keeps its first 30 s). The dashboard follows the skier (zoom 15.8, smoothed), has 1x / 2x / 4x speed buttons (POST `/api/replay/session/{id}/speed`), and the server drops to 1x from 5 s before each warning until 8 s after, using warning times computed up front with the same geofence. When a scenario starts, its target zone pulses and is labeled by name.
 
 Agent messages on the dashboard log: `{ "from": "skier | terrain | coordinator | voice | creao:<role>", "type": "string", "data": {}, "time": "ISO timestamp" }`.
 
@@ -191,13 +207,14 @@ The demo must never wait minutes for Creao. Demo mode loads `hazard_map.cached.j
 
 `scenarios.py` runs each and prints expected vs actual.
 
-1. Intermediate stays on the groomer → silence
-2. Intermediate drifts toward the cliff band → warning early enough to stop, plus safe line
-3. Expert enters the bowl on purpose → no alarm
-4. GPS jumps near the cliff for 2 seconds → no warning from one noisy point
-5. Fast run, sudden stop, no movement → voice check in with 30 second countdown, then escalate to Incident Responder and patrol console
-5b. Same stop, skier says "I'm okay" → countdown cancelled, no escalation
-6. Closed run ahead → reroute before the closure
+1. Advanced skier on a clean line down Garnet Bowl Left → only the Garnet Bowl entry briefing
+2. Advanced skier on Garnet Bowl Right drifts toward `garnet-cliff-band-1` in flat light → entry briefing, then guidance naming the hazard and the safe line early enough to change line (a "stop" warning only if they get inside the zone or within 15 m)
+3. GPS jumps near a cliff for 2 seconds → no alert from one noisy point
+4. Fast run, sudden stop, no movement → voice check in with 30 second countdown, then escalate to Incident Responder and patrol console
+4b. Same stop, skier says "I'm okay" → countdown cancelled, no escalation
+5. Closed area ahead → hard warning before the closure
+
+The intermediate scenarios were dropped when Cairn's community changed to advanced and expert skiers (2026-10-24).
 
 ## Cartesia rules
 
@@ -220,7 +237,7 @@ The demo must never wait minutes for Creao. Demo mode loads `hazard_map.cached.j
 
 ## README must include
 
-- One line on who it's for: intermediate skiers at Whistler Blackcomb
+- One line on who it's for: advanced and expert skiers at Spanky's Ladder and the Glacier bowls, Whistler Blackcomb
 - Creao run share link and every agent ID
 - Cartesia features used and known limitations
 - Where Claude is used and how it could go wrong (GPS drift, outdated map, overconfidence) and the mitigations

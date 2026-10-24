@@ -48,6 +48,20 @@ ZONES = {
 
 ENTRANCE_OSM_ID = "way/461517641"
 
+# The Glacier bowls below Spanky's Ladder, from their OSM ski area polygons. Entering one
+# gives an advanced or expert skier a calm briefing, never a warning (CLAUDE.md).
+BOWLS = {
+    "way/1167734532": ("garnet-bowl", "expert_terrain", "Garnet Bowl"),
+    "way/1167734534": ("ruby-bowl", "expert_terrain", "Ruby Bowl"),
+    "way/1167734533": ("diamond-bowl", "expert_terrain", "Diamond Bowl"),
+    "way/1167657607": ("sapphire-bowl", "expert_terrain", "Sapphire Bowl"),
+}
+ZONES.update(BOWLS)
+
+# A cliff or closure this close to an expert zone counts as one of its main hazards
+# (OSM cliffs are drawn along bowl edges, not inside the bowl polygons).
+BRIEFING_HAZARD_RADIUS_M = 60
+
 # Rock Alley (an intermediate run) runs through the Ladder entrance. Everything within
 # this half width of it is cut out of spankys-ladder-entrance, so skiers on the run are
 # outside the zone. 25 m matches the entrance buffer and covers turns plus GPS error.
@@ -256,6 +270,27 @@ def zone_feature(osm_feature, half_width_m):
     return {"type": "Feature", "geometry": geometry, "properties": properties}
 
 
+def add_briefing_hazards(features):
+    """Give each expert zone `hazards_inside`: the cliff and closure zones in or along it, nearest first."""
+    lat0 = 50.0977
+    m_lon, m_lat = 111320 * math.cos(math.radians(lat0)), 111320
+
+    def ring_xy(feature):
+        return [((lon + 122.8811) * m_lon, (lat - lat0) * m_lat) for lon, lat in feature["geometry"]["coordinates"][0]]
+
+    hazards = [f for f in features if f["properties"]["type"] in ("cliff", "closure")]
+    for expert in (f for f in features if f["properties"]["type"] == "expert_terrain"):
+        ring = ring_xy(expert)
+        nearby = []
+        for hazard in hazards:
+            other = ring_xy(hazard)
+            touching = any(point_in_ring(p, ring) for p in other) or any(point_in_ring(p, other) for p in ring)
+            gap = 0 if touching else min(distance_to_line(p, ring) for p in other)
+            if gap <= BRIEFING_HAZARD_RADIUS_M:
+                nearby.append((gap, hazard["properties"]["id"]))
+        expert["properties"]["hazards_inside"] = [zone_id for _, zone_id in sorted(nearby)]
+
+
 def main():
     runs = {f["properties"]["osm_id"]: f for f in json.loads(RUNS_FILE.read_text())["features"]}
     hazards = json.loads(OSM_HAZARDS_FILE.read_text())["features"]
@@ -279,6 +314,10 @@ def main():
             print(f"WARNING: {p['osm_id']} ({p['kind']}, {p['dist_to_spankys_m']} m) has no entry in ZONES, skipped")
             continue
         features.append(zone_feature(hazard, CLIFF_BUFFER_M))
+
+    for osm_id in BOWLS:
+        features.append(zone_feature(runs[osm_id], 0))
+    add_briefing_hazards(features)
 
     missing = set(ZONES) - {f["properties"]["osm_id"] for f in features}
     for osm_id in sorted(missing):

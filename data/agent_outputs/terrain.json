@@ -6,186 +6,125 @@
    "id": "spankys-ladder-entrance",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Expert entrance. 22.3 cm new snow, unrated danger today."
+   "hint": "22 cm new snow and gusts to 52 km/h at the entrance.",
+   "briefing": "22 cm new snow, gusts 52 km/h, visibility unrecorded \u2014 mind the cliff band at the entrance."
   },
   {
    "id": "spankys-closure-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Permanently closed. Do not enter."
+   "hint": "Closed, permanently off limits toward Showcase Bowl."
   },
   {
    "id": "chimney-ladder-closure-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Permanently closed. Do not enter."
+   "hint": "Closed, permanently off limits by Chimney Ladder and the Grey Zone."
   },
   {
    "id": "spankys-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band at Spanky's entrance and Ruby Bowl Traverse. Stay clear."
+   "hint": "Cliff band along the Ruby Bowl Traverse with 22 cm new snow."
   },
   {
    "id": "garnet-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band in Garnet Bowl Center. Stay clear."
+   "hint": "Cliff band in Garnet Bowl Center, under 22 cm of new snow."
   },
   {
    "id": "diamond-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band between Wild Thing and Diamond Centre. Stay clear."
+   "hint": "Cliff band between Wild Thing and Diamond Centre; gusts 52 km/h."
   },
   {
    "id": "garnet-cliff-band-2",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Stay clear."
+   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre today."
   },
   {
    "id": "ruby-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Long cliff band through Ruby Bowl. Stay clear."
+   "hint": "Long cliff band through Ruby Bowl; 22 cm new snow."
   },
   {
    "id": "diamond-cliff-band-3",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band beside Wild Thing. Stay clear."
+   "hint": "Cliff band beside Wild Thing, with 22 cm new snow."
   },
   {
    "id": "diamond-cliff-band-2",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl. Stay clear."
+   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl."
   },
   {
    "id": "sapphire-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes. Stay clear."
+   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes."
   },
   {
    "id": "spankys-cliff-band-2",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder. Stay clear."
+   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder today."
   },
   {
    "id": "diamond-cliff-band-4",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band near Zut Zut. Stay clear."
+   "hint": "Cliff band near Zut Zut; gusts 52 km/h today."
   },
   {
    "id": "diamond-cliff-band-5",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band along the Bad Attitude Traverse. Stay clear."
+   "hint": "22 cm of new snow along the Bad Attitude Traverse cliff band."
   },
   {
    "id": "showcase-cliff-band-1",
    "active": true,
    "severity": "high",
-   "applies_to": [
-    "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
-   ],
-   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Stay clear."
+   "hint": "Cliff band along Showcase and the Blackcomb Glacier Traverse."
+  },
+  {
+   "id": "garnet-bowl",
+   "active": true,
+   "severity": "high",
+   "hint": "Garnet Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands in Garnet Bowl Center are the markers."
+  },
+  {
+   "id": "ruby-bowl",
+   "active": true,
+   "severity": "high",
+   "hint": "Ruby Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 the long cliff band through Ruby Bowl."
+  },
+  {
+   "id": "diamond-bowl",
+   "active": true,
+   "severity": "high",
+   "hint": "Diamond Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands between Wild Thing and Diamond Centre."
+  },
+  {
+   "id": "sapphire-bowl",
+   "active": true,
+   "severity": "high",
+   "hint": "Sapphire Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff band by the Sapphire Chutes."
   }
  ],
  "notes_for_route_planner": [
-  "Resort operating on this replay date; no closures in the conditions input apply here.",
-  "Avalanche danger unrated at all elevations; 22.3 cm new snow, 51.8 km/h gusts, visibility unknown.",
-  "Both permanently closed areas and every mapped cliff band are hard limits."
+  "Avalanche danger unrated for this date (no archived forecast); 22.3 cm new snow and gusts to 51.8 km/h mean wind loading is unknown, not absent.",
+  "Visibility was not recorded, so sightlines to the cliff bands are unverified \u2014 read them from the top before committing.",
+  "Hard limits: the two permanently closed areas beside Spanky's Ladder toward Showcase Bowl, and by Chimney Ladder and the Grey Zone; in-bounds operating status for this date could not be verified."
  ]
 }

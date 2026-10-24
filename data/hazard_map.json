@@ -1,31 +1,29 @@
 {
- "generated_at": "2026-10-24T06:59:12.122034+00:00",
+ "generated_at": "2026-10-24T19:06:21.525068+00:00",
+ "complete": true,
  "date": "2026-02-22",
  "creao_run_link": null,
  "creao_runs": [
   {
    "role": "conditions",
-   "run_id": "5a420c25-1718-44d7-b9eb-6160fd57014b",
-   "started_at": "2026-10-24T06:47:33.583562+00:00",
-   "finished_at": "2026-10-24T06:48:14.197481+00:00",
-   "duration_s": 35.3,
-   "wall_s": 40.6
+   "run_id": "5be0dac2-60af-4c59-aa4c-70d2a7232125",
+   "started_at": "2026-10-24T18:57:35.391Z",
+   "finished_at": "2026-10-24T18:58:05.945Z",
+   "duration_s": 30.6
   },
   {
    "role": "terrain",
-   "run_id": "38758c85-1ace-4fa3-9994-c7394be9ef52",
-   "started_at": "2026-10-24T06:48:14.200640+00:00",
-   "finished_at": "2026-10-24T06:49:04.950207+00:00",
-   "duration_s": 41.2,
-   "wall_s": 50.8
+   "run_id": "1b4b3d4f-1269-46d2-ba8a-e6715734e7c3",
+   "started_at": "2026-10-24T18:58:06.813Z",
+   "finished_at": "2026-10-24T18:58:43.091Z",
+   "duration_s": 36.3
   },
   {
    "role": "route",
-   "run_id": "dab36e7f-245d-4579-bbf5-66d35313653f",
-   "started_at": "2026-10-24T06:49:04.953363+00:00",
-   "finished_at": "2026-10-24T06:49:55.696093+00:00",
-   "duration_s": 45.6,
-   "wall_s": 50.7
+   "run_id": "21d37c06-6cb4-44cd-89ea-e54a89dc6748",
+   "started_at": "2026-10-24T18:58:48.466Z",
+   "finished_at": "2026-10-24T18:59:29.278Z",
+   "duration_s": 40.8
   }
  ],
  "conditions": {
@@ -78,12 +76,18 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Expert entrance. 22.3 cm new snow, unrated danger today.",
+   "hint": "22 cm new snow and gusts to 52 km/h at the entrance.",
+   "briefing": "22 cm new snow, gusts 52 km/h, visibility unrecorded \u2014 mind the cliff band at the entrance.",
    "annotated_by": "terrain_scout",
+   "hazards_inside": [
+    "spankys-cliff-band-1",
+    "spankys-closure-1",
+    "chimney-ladder-closure-1"
+   ],
+   "safe_line": null,
+   "cliff_lines": null,
    "polygon": [
     [
      50.09872208517692,
@@ -623,12 +627,14 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Permanently closed. Do not enter.",
+   "hint": "Closed, permanently off limits toward Showcase Bowl.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": null,
+   "cliff_lines": null,
    "polygon": [
     [
      50.0978226,
@@ -684,12 +690,14 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Permanently closed. Do not enter.",
+   "hint": "Closed, permanently off limits by Chimney Ladder and the Grey Zone.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": null,
+   "cliff_lines": null,
    "polygon": [
     [
      50.0985686,
@@ -805,12 +813,37 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band at Spanky's entrance and Ruby Bowl Traverse. Stay clear.",
+   "hint": "Cliff band along the Ruby Bowl Traverse with 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "garnet-bowl-right-line",
+   "cliff_lines": [
+    [
+     [
+      50.0987654,
+      -122.8810567
+     ],
+     [
+      50.0993446,
+      -122.8812764
+     ],
+     [
+      50.099929,
+      -122.8814513
+     ],
+     [
+      50.1004797,
+      -122.8815451
+     ],
+     [
+      50.1010222,
+      -122.8815692
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.098722924131984,
@@ -922,12 +955,37 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band in Garnet Bowl Center. Stay clear.",
+   "hint": "Cliff band in Garnet Bowl Center, under 22 cm of new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "garnet-bowl-right-line",
+   "cliff_lines": [
+    [
+     [
+      50.099564,
+      -122.8787364
+     ],
+     [
+      50.0998251,
+      -122.878973
+     ],
+     [
+      50.0999951,
+      -122.8791624
+     ],
+     [
+      50.1001409,
+      -122.8793707
+     ],
+     [
+      50.1002866,
+      -122.8796547
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.09947371318537,
@@ -1039,12 +1097,53 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Wild Thing and Diamond Centre. Stay clear.",
+   "hint": "Cliff band between Wild Thing and Diamond Centre; gusts 52 km/h.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "garnet-bowl-right-line",
+   "cliff_lines": [
+    [
+     [
+      50.0998797,
+      -122.8776619
+     ],
+     [
+      50.0997461,
+      -122.8779743
+     ],
+     [
+      50.0997447,
+      -122.878122
+     ],
+     [
+      50.0997704,
+      -122.8782204
+     ],
+     [
+      50.0998896,
+      -122.8784874
+     ],
+     [
+      50.1000133,
+      -122.8786275
+     ],
+     [
+      50.1001177,
+      -122.8787472
+     ],
+     [
+      50.100238,
+      -122.8788358
+     ],
+     [
+      50.1003716,
+      -122.8788547
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.09973021442489,
@@ -1188,12 +1287,29 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre. Stay clear.",
+   "hint": "Cliff band between Garnet Bowl Center and Diamond Centre today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "garnet-bowl-left-line",
+   "cliff_lines": [
+    [
+     [
+      50.1005113,
+      -122.8792571
+     ],
+     [
+      50.100906,
+      -122.8794653
+     ],
+     [
+      50.1012946,
+      -122.8797304
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10045371737058,
@@ -1289,12 +1405,105 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Long cliff band through Ruby Bowl. Stay clear.",
+   "hint": "Long cliff band through Ruby Bowl; 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "shredder-line",
+   "cliff_lines": [
+    [
+     [
+      50.101086,
+      -122.8819985
+     ],
+     [
+      50.1010012,
+      -122.8823626
+     ],
+     [
+      50.1007384,
+      -122.8825801
+     ],
+     [
+      50.1007547,
+      -122.8827404
+     ],
+     [
+      50.1009012,
+      -122.8828716
+     ],
+     [
+      50.1012204,
+      -122.8829679
+     ],
+     [
+      50.1014282,
+      -122.883145
+     ],
+     [
+      50.1016451,
+      -122.8835657
+     ],
+     [
+      50.1019561,
+      -122.8842201
+     ],
+     [
+      50.1023385,
+      -122.8845717
+     ],
+     [
+      50.103024,
+      -122.8846183
+     ],
+     [
+      50.1035527,
+      -122.8844342
+     ],
+     [
+      50.1040108,
+      -122.8840056
+     ],
+     [
+      50.1042486,
+      -122.883577
+     ],
+     [
+      50.1044072,
+      -122.8828765
+     ],
+     [
+      50.104587,
+      -122.882176
+     ],
+     [
+      50.1046504,
+      -122.8818875
+     ],
+     [
+      50.104846,
+      -122.881154
+     ],
+     [
+      50.1049464,
+      -122.8810963
+     ],
+     [
+      50.1050891,
+      -122.8811458
+     ],
+     [
+      50.1055437,
+      -122.8817969
+     ],
+     [
+      50.105808,
+      -122.8824891
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10091712536959,
@@ -1530,12 +1739,41 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band beside Wild Thing. Stay clear.",
+   "hint": "Cliff band beside Wild Thing, with 22 cm new snow.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "diamond-bowl-line",
+   "cliff_lines": [
+    [
+     [
+      50.1006388,
+      -122.8760714
+     ],
+     [
+      50.1003629,
+      -122.876252
+     ],
+     [
+      50.1001692,
+      -122.8764027
+     ],
+     [
+      50.1000217,
+      -122.8766729
+     ],
+     [
+      50.0999344,
+      -122.8770181
+     ],
+     [
+      50.0998919,
+      -122.8773684
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10056924616755,
@@ -1655,12 +1893,29 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl. Stay clear.",
+   "hint": "Cliff at the Helter Skelter entrance to Diamond Bowl.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "hobbs-right-line",
+   "cliff_lines": [
+    [
+     [
+      50.1005901,
+      -122.8787299
+     ],
+     [
+      50.1008413,
+      -122.8788169
+     ],
+     [
+      50.1010505,
+      -122.8789528
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10055113696133,
@@ -1756,12 +2011,53 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes. Stay clear.",
+   "hint": "Cliff band in Sapphire Bowl by the Sapphire Chutes.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": null,
+   "cliff_lines": [
+    [
+     [
+      50.0955857,
+      -122.8750474
+     ],
+     [
+      50.0961721,
+      -122.8743945
+     ],
+     [
+      50.0965115,
+      -122.8741765
+     ],
+     [
+      50.0968237,
+      -122.8740898
+     ],
+     [
+      50.0970386,
+      -122.8741795
+     ],
+     [
+      50.0972332,
+      -122.87438
+     ],
+     [
+      50.0973512,
+      -122.8745884
+     ],
+     [
+      50.0974287,
+      -122.8748443
+     ],
+     [
+      50.0975316,
+      -122.875579
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.09569012389673,
@@ -1905,12 +2201,65 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder. Stay clear.",
+   "hint": "Cliff band between Spanky's Chute and Spanky's Shoulder today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "garnet-bowl-left-line",
+   "cliff_lines": [
+    [
+     [
+      50.1023707,
+      -122.8804107
+     ],
+     [
+      50.1023754,
+      -122.880875
+     ],
+     [
+      50.1022265,
+      -122.8813248
+     ],
+     [
+      50.1021241,
+      -122.8814844
+     ],
+     [
+      50.1019705,
+      -122.8814264
+     ],
+     [
+      50.1018635,
+      -122.8812958
+     ],
+     [
+      50.1017565,
+      -122.8813103
+     ],
+     [
+      50.1016681,
+      -122.8814409
+     ],
+     [
+      50.1016494,
+      -122.8817819
+     ],
+     [
+      50.1015145,
+      -122.8818218
+     ],
+     [
+      50.1013656,
+      -122.8817601
+     ],
+     [
+      50.1012911,
+      -122.8816948
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10219106013479,
@@ -2066,12 +2415,53 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band near Zut Zut. Stay clear.",
+   "hint": "Cliff band near Zut Zut; gusts 52 km/h today.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "diamond-bowl-line",
+   "cliff_lines": [
+    [
+     [
+      50.099151,
+      -122.8757069
+     ],
+     [
+      50.0995093,
+      -122.8755554
+     ],
+     [
+      50.0995892,
+      -122.8755414
+     ],
+     [
+      50.1000956,
+      -122.8754021
+     ],
+     [
+      50.1003255,
+      -122.8754127
+     ],
+     [
+      50.1003655,
+      -122.8754134
+     ],
+     [
+      50.1007724,
+      -122.8754797
+     ],
+     [
+      50.1011428,
+      -122.8755838
+     ],
+     [
+      50.1014829,
+      -122.8757921
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.09919803040031,
@@ -2215,12 +2605,53 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band along the Bad Attitude Traverse. Stay clear.",
+   "hint": "22 cm of new snow along the Bad Attitude Traverse cliff band.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": "hobbs-right-line",
+   "cliff_lines": [
+    [
+     [
+      50.1014116,
+      -122.8788811
+     ],
+     [
+      50.1017185,
+      -122.8786925
+     ],
+     [
+      50.1019587,
+      -122.8786707
+     ],
+     [
+      50.1021499,
+      -122.8787361
+     ],
+     [
+      50.1022014,
+      -122.8789682
+     ],
+     [
+      50.1022704,
+      -122.8792178
+     ],
+     [
+      50.1024557,
+      -122.8791851
+     ],
+     [
+      50.1025075,
+      -122.8788325
+     ],
+     [
+      50.1027681,
+      -122.8791241
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.10147748542337,
@@ -2356,12 +2787,45 @@
    "severity": "high",
    "applies_to": [
     "beginner",
-    "intermediate",
-    "advanced",
-    "expert"
+    "intermediate"
    ],
-   "hint": "Cliff band along Showcase and Blackcomb Glacier Traverse. Stay clear.",
+   "hint": "Cliff band along Showcase and the Blackcomb Glacier Traverse.",
+   "briefing": null,
    "annotated_by": "terrain_scout",
+   "hazards_inside": [],
+   "safe_line": null,
+   "cliff_lines": [
+    [
+     [
+      50.0907917,
+      -122.8768612
+     ],
+     [
+      50.0912944,
+      -122.8761212
+     ],
+     [
+      50.0920578,
+      -122.8760631
+     ],
+     [
+      50.0924066,
+      -122.8763851
+     ],
+     [
+      50.0934727,
+      -122.877369
+     ],
+     [
+      50.0937892,
+      -122.8779784
+     ],
+     [
+      50.0940126,
+      -122.8783702
+     ]
+    ]
+   ],
    "polygon": [
     [
      50.090915059183786,
@@ -2478,6 +2942,1052 @@
     [
      50.090915059183786,
      -122.87706479007655
+    ]
+   ]
+  },
+  {
+   "id": "garnet-bowl",
+   "type": "expert_terrain",
+   "name": "Garnet Bowl",
+   "active": true,
+   "severity": "high",
+   "applies_to": [
+    "beginner",
+    "intermediate"
+   ],
+   "hint": "Garnet Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands in Garnet Bowl Center are the markers.",
+   "annotated_by": "terrain_scout",
+   "hazards_inside": [
+    "spankys-cliff-band-1",
+    "garnet-cliff-band-1",
+    "garnet-cliff-band-2",
+    "chimney-ladder-closure-1",
+    "diamond-cliff-band-1",
+    "spankys-closure-1",
+    "spankys-cliff-band-2"
+   ],
+   "safe_line": null,
+   "cliff_lines": null,
+   "polygon": [
+    [
+     50.0982958,
+     -122.8805801
+    ],
+    [
+     50.0983042,
+     -122.8803613
+    ],
+    [
+     50.0983415,
+     -122.8801728
+    ],
+    [
+     50.0984128,
+     -122.8799785
+    ],
+    [
+     50.098503,
+     -122.8796878
+    ],
+    [
+     50.0986903,
+     -122.8791518
+    ],
+    [
+     50.0988396,
+     -122.8788441
+    ],
+    [
+     50.099018,
+     -122.878832
+    ],
+    [
+     50.0991958,
+     -122.8789066
+    ],
+    [
+     50.0992915,
+     -122.8790281
+    ],
+    [
+     50.0994653,
+     -122.8792112
+    ],
+    [
+     50.0997068,
+     -122.879521
+    ],
+    [
+     50.0999697,
+     -122.8797846
+    ],
+    [
+     50.100172,
+     -122.879956
+    ],
+    [
+     50.1003748,
+     -122.8801327
+    ],
+    [
+     50.100551,
+     -122.8801673
+    ],
+    [
+     50.1006689,
+     -122.8801579
+    ],
+    [
+     50.1008485,
+     -122.8800985
+    ],
+    [
+     50.1009927,
+     -122.8801354
+    ],
+    [
+     50.1011245,
+     -122.8802796
+    ],
+    [
+     50.1011573,
+     -122.8804395
+    ],
+    [
+     50.1011126,
+     -122.8805933
+    ],
+    [
+     50.1010424,
+     -122.8806692
+    ],
+    [
+     50.1008804,
+     -122.8807474
+    ],
+    [
+     50.1006595,
+     -122.8807932
+    ],
+    [
+     50.1002471,
+     -122.8808389
+    ],
+    [
+     50.0997303,
+     -122.8808399
+    ],
+    [
+     50.0991152,
+     -122.8807548
+    ],
+    [
+     50.0988883,
+     -122.8806889
+    ],
+    [
+     50.0987414,
+     -122.8807903
+    ],
+    [
+     50.0985338,
+     -122.8809499
+    ],
+    [
+     50.0984297,
+     -122.8809414
+    ],
+    [
+     50.0983153,
+     -122.8807057
+    ],
+    [
+     50.0982958,
+     -122.8805801
+    ]
+   ]
+  },
+  {
+   "id": "ruby-bowl",
+   "type": "expert_terrain",
+   "name": "Ruby Bowl",
+   "active": true,
+   "severity": "high",
+   "applies_to": [
+    "beginner",
+    "intermediate"
+   ],
+   "hint": "Ruby Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 the long cliff band through Ruby Bowl.",
+   "annotated_by": "terrain_scout",
+   "hazards_inside": [
+    "ruby-cliff-band-1",
+    "spankys-cliff-band-2",
+    "chimney-ladder-closure-1"
+   ],
+   "safe_line": null,
+   "cliff_lines": null,
+   "polygon": [
+    [
+     50.1038299,
+     -122.8832189
+    ],
+    [
+     50.1036558,
+     -122.8834521
+    ],
+    [
+     50.1034048,
+     -122.8836018
+    ],
+    [
+     50.1031925,
+     -122.8836455
+    ],
+    [
+     50.102916,
+     -122.8835927
+    ],
+    [
+     50.102675,
+     -122.8835191
+    ],
+    [
+     50.1024501,
+     -122.8833509
+    ],
+    [
+     50.1021657,
+     -122.88304
+    ],
+    [
+     50.1019131,
+     -122.8827104
+    ],
+    [
+     50.1018418,
+     -122.8825492
+    ],
+    [
+     50.1018235,
+     -122.8823179
+    ],
+    [
+     50.1018589,
+     -122.8820615
+    ],
+    [
+     50.1019587,
+     -122.8819232
+    ],
+    [
+     50.1022594,
+     -122.8817296
+    ],
+    [
+     50.1023765,
+     -122.8816372
+    ],
+    [
+     50.1024868,
+     -122.8815027
+    ],
+    [
+     50.1025299,
+     -122.8813135
+    ],
+    [
+     50.10261,
+     -122.8809528
+    ],
+    [
+     50.1026486,
+     -122.8807083
+    ],
+    [
+     50.1026989,
+     -122.8805278
+    ],
+    [
+     50.1027882,
+     -122.8803627
+    ],
+    [
+     50.1028762,
+     -122.8802666
+    ],
+    [
+     50.1029579,
+     -122.8802123
+    ],
+    [
+     50.1030609,
+     -122.880194
+    ],
+    [
+     50.1032006,
+     -122.8802186
+    ],
+    [
+     50.1033221,
+     -122.8802425
+    ],
+    [
+     50.1034552,
+     -122.8802491
+    ],
+    [
+     50.1035794,
+     -122.8802015
+    ],
+    [
+     50.1038081,
+     -122.8799862
+    ],
+    [
+     50.1040443,
+     -122.8797878
+    ],
+    [
+     50.1042144,
+     -122.8796483
+    ],
+    [
+     50.1043469,
+     -122.8795775
+    ],
+    [
+     50.1044816,
+     -122.8795952
+    ],
+    [
+     50.104583,
+     -122.8796786
+    ],
+    [
+     50.1046912,
+     -122.879815
+    ],
+    [
+     50.1047573,
+     -122.8799403
+    ],
+    [
+     50.104815,
+     -122.8802099
+    ],
+    [
+     50.1048442,
+     -122.8803926
+    ],
+    [
+     50.1048078,
+     -122.8806974
+    ],
+    [
+     50.104727,
+     -122.8809745
+    ],
+    [
+     50.1046095,
+     -122.8812212
+    ],
+    [
+     50.1043375,
+     -122.8816734
+    ],
+    [
+     50.1042723,
+     -122.8818133
+    ],
+    [
+     50.1041873,
+     -122.8821524
+    ],
+    [
+     50.1041624,
+     -122.8824576
+    ],
+    [
+     50.104098,
+     -122.8827991
+    ],
+    [
+     50.1040136,
+     -122.8830152
+    ],
+    [
+     50.1038299,
+     -122.8832189
+    ]
+   ]
+  },
+  {
+   "id": "diamond-bowl",
+   "type": "expert_terrain",
+   "name": "Diamond Bowl",
+   "active": true,
+   "severity": "high",
+   "applies_to": [
+    "beginner",
+    "intermediate"
+   ],
+   "hint": "Diamond Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff bands between Wild Thing and Diamond Centre.",
+   "annotated_by": "terrain_scout",
+   "hazards_inside": [
+    "diamond-cliff-band-2",
+    "diamond-cliff-band-4",
+    "diamond-cliff-band-1",
+    "diamond-cliff-band-5",
+    "diamond-cliff-band-3",
+    "garnet-cliff-band-2",
+    "garnet-cliff-band-1"
+   ],
+   "safe_line": null,
+   "cliff_lines": null,
+   "polygon": [
+    [
+     50.10034,
+     -122.8775219
+    ],
+    [
+     50.1002985,
+     -122.8777193
+    ],
+    [
+     50.1002905,
+     -122.8779173
+    ],
+    [
+     50.1003343,
+     -122.8781067
+    ],
+    [
+     50.1003755,
+     -122.8782091
+    ],
+    [
+     50.1004874,
+     -122.8783704
+    ],
+    [
+     50.100563,
+     -122.8784377
+    ],
+    [
+     50.1006752,
+     -122.8784877
+    ],
+    [
+     50.1007947,
+     -122.8784984
+    ],
+    [
+     50.1009696,
+     -122.8784542
+    ],
+    [
+     50.1011272,
+     -122.8783514
+    ],
+    [
+     50.1013192,
+     -122.8782235
+    ],
+    [
+     50.1015681,
+     -122.8781303
+    ],
+    [
+     50.101726,
+     -122.8780756
+    ],
+    [
+     50.1018379,
+     -122.8779668
+    ],
+    [
+     50.1019448,
+     -122.8777732
+    ],
+    [
+     50.1019966,
+     -122.8775325
+    ],
+    [
+     50.1020121,
+     -122.8772668
+    ],
+    [
+     50.102006,
+     -122.8769966
+    ],
+    [
+     50.1019601,
+     -122.8767064
+    ],
+    [
+     50.1018957,
+     -122.8764427
+    ],
+    [
+     50.1017965,
+     -122.8762446
+    ],
+    [
+     50.1017001,
+     -122.8761454
+    ],
+    [
+     50.1015879,
+     -122.8761244
+    ],
+    [
+     50.101503,
+     -122.8761503
+    ],
+    [
+     50.1013778,
+     -122.8762669
+    ],
+    [
+     50.1012394,
+     -122.8764239
+    ],
+    [
+     50.1010528,
+     -122.8766091
+    ],
+    [
+     50.1008526,
+     -122.8767598
+    ],
+    [
+     50.1006383,
+     -122.8769079
+    ],
+    [
+     50.1005094,
+     -122.8770799
+    ],
+    [
+     50.1003958,
+     -122.8773274
+    ],
+    [
+     50.10034,
+     -122.8775219
+    ]
+   ]
+  },
+  {
+   "id": "sapphire-bowl",
+   "type": "expert_terrain",
+   "name": "Sapphire Bowl",
+   "active": true,
+   "severity": "high",
+   "applies_to": [
+    "beginner",
+    "intermediate"
+   ],
+   "hint": "Sapphire Bowl: 22 cm new snow, gusts 52 km/h, danger unrated.",
+   "briefing": "22 cm new snow, gusts 52 km/h, danger unrated \u2014 cliff band by the Sapphire Chutes.",
+   "annotated_by": "terrain_scout",
+   "hazards_inside": [
+    "sapphire-cliff-band-1",
+    "diamond-cliff-band-4"
+   ],
+   "safe_line": null,
+   "cliff_lines": null,
+   "polygon": [
+    [
+     50.0988539,
+     -122.8766553
+    ],
+    [
+     50.098827,
+     -122.8768579
+    ],
+    [
+     50.0987504,
+     -122.8771006
+    ],
+    [
+     50.0986191,
+     -122.8774163
+    ],
+    [
+     50.0984228,
+     -122.8778278
+    ],
+    [
+     50.0983887,
+     -122.8778924
+    ],
+    [
+     50.0981348,
+     -122.8782315
+    ],
+    [
+     50.0979209,
+     -122.8784435
+    ],
+    [
+     50.0977492,
+     -122.878514
+    ],
+    [
+     50.0975934,
+     -122.8785378
+    ],
+    [
+     50.0974047,
+     -122.878498
+    ],
+    [
+     50.0972946,
+     -122.8784543
+    ],
+    [
+     50.0970157,
+     -122.8783097
+    ],
+    [
+     50.0968156,
+     -122.8782009
+    ],
+    [
+     50.0966467,
+     -122.8780194
+    ],
+    [
+     50.0965083,
+     -122.8777793
+    ],
+    [
+     50.096465,
+     -122.8773544
+    ],
+    [
+     50.0965186,
+     -122.8769663
+    ],
+    [
+     50.0967599,
+     -122.8764899
+    ],
+    [
+     50.0970203,
+     -122.8760974
+    ],
+    [
+     50.0972026,
+     -122.8758934
+    ],
+    [
+     50.0974125,
+     -122.8757758
+    ],
+    [
+     50.0976019,
+     -122.8757477
+    ],
+    [
+     50.0978243,
+     -122.8757883
+    ],
+    [
+     50.0982919,
+     -122.8758639
+    ],
+    [
+     50.0985004,
+     -122.8759412
+    ],
+    [
+     50.0986784,
+     -122.8760818
+    ],
+    [
+     50.0988236,
+     -122.876371
+    ],
+    [
+     50.0988539,
+     -122.8766553
+    ]
+   ]
+  }
+ ],
+ "safe_lines": [
+  {
+   "id": "garnet-bowl-right-line",
+   "name": "Garnet Bowl Right",
+   "bowl": "Garnet Bowl",
+   "path": [
+    [
+     50.0985018,
+     -122.8809898
+    ],
+    [
+     50.0984054,
+     -122.8807933
+    ],
+    [
+     50.098357,
+     -122.8806261
+    ],
+    [
+     50.0983451,
+     -122.8804644
+    ],
+    [
+     50.0983626,
+     -122.8803497
+    ],
+    [
+     50.0984329,
+     -122.8801259
+    ],
+    [
+     50.0984664,
+     -122.8800304
+    ],
+    [
+     50.0985132,
+     -122.8798762
+    ],
+    [
+     50.0986623,
+     -122.879468
+    ],
+    [
+     50.0987282,
+     -122.8793898
+    ],
+    [
+     50.0991282,
+     -122.8789419
+    ],
+    [
+     50.0991859,
+     -122.8788599
+    ],
+    [
+     50.099237,
+     -122.87878
+    ],
+    [
+     50.0993155,
+     -122.8786423
+    ]
+   ]
+  },
+  {
+   "id": "garnet-bowl-left-line",
+   "name": "Garnet Bowl Left",
+   "bowl": "Garnet Bowl",
+   "path": [
+    [
+     50.0985018,
+     -122.8809898
+    ],
+    [
+     50.098554,
+     -122.8807549
+    ],
+    [
+     50.0986452,
+     -122.8806363
+    ],
+    [
+     50.0987408,
+     -122.8805635
+    ],
+    [
+     50.0989239,
+     -122.8805554
+    ],
+    [
+     50.0990417,
+     -122.8805737
+    ],
+    [
+     50.0992667,
+     -122.8806352
+    ],
+    [
+     50.099528,
+     -122.8806955
+    ],
+    [
+     50.0997243,
+     -122.8807067
+    ],
+    [
+     50.0999136,
+     -122.8806948
+    ],
+    [
+     50.1001023,
+     -122.8806718
+    ],
+    [
+     50.1009536,
+     -122.8805423
+    ],
+    [
+     50.1017006,
+     -122.880372
+    ]
+   ]
+  },
+  {
+   "id": "ruby-bowl-line",
+   "name": "Ruby Bowl",
+   "bowl": "Ruby Bowl",
+   "path": [
+    [
+     50.1034651,
+     -122.8803524
+    ],
+    [
+     50.1036756,
+     -122.8803248
+    ],
+    [
+     50.1038641,
+     -122.8802725
+    ],
+    [
+     50.1040218,
+     -122.8802019
+    ],
+    [
+     50.1041523,
+     -122.8801209
+    ],
+    [
+     50.1043406,
+     -122.8799947
+    ]
+   ]
+  },
+  {
+   "id": "shredder-line",
+   "name": "Shredder",
+   "bowl": "Ruby Bowl",
+   "path": [
+    [
+     50.1038332,
+     -122.8830999
+    ],
+    [
+     50.1039019,
+     -122.8830431
+    ],
+    [
+     50.1039584,
+     -122.8829938
+    ],
+    [
+     50.103996,
+     -122.8829385
+    ],
+    [
+     50.1040265,
+     -122.8828635
+    ],
+    [
+     50.1040594,
+     -122.8826982
+    ],
+    [
+     50.1040829,
+     -122.8824954
+    ],
+    [
+     50.1040966,
+     -122.8822764
+    ],
+    [
+     50.1041088,
+     -122.8819473
+    ],
+    [
+     50.1041024,
+     -122.8816445
+    ],
+    [
+     50.1041138,
+     -122.8813935
+    ],
+    [
+     50.1041354,
+     -122.8811371
+    ],
+    [
+     50.1041699,
+     -122.8808501
+    ],
+    [
+     50.1042195,
+     -122.8805492
+    ],
+    [
+     50.1043406,
+     -122.8799947
+    ]
+   ]
+  },
+  {
+   "id": "midway-rock-line",
+   "name": "Midway Rock",
+   "bowl": "Ruby Bowl",
+   "path": [
+    [
+     50.1033749,
+     -122.8835446
+    ],
+    [
+     50.1034633,
+     -122.8833722
+    ],
+    [
+     50.1035117,
+     -122.8831913
+    ],
+    [
+     50.1035435,
+     -122.8829709
+    ],
+    [
+     50.1035477,
+     -122.8827726
+    ],
+    [
+     50.1035283,
+     -122.8825176
+    ],
+    [
+     50.1035267,
+     -122.8823089
+    ],
+    [
+     50.1035553,
+     -122.8820655
+    ],
+    [
+     50.1035977,
+     -122.8818658
+    ],
+    [
+     50.1036665,
+     -122.8816415
+    ],
+    [
+     50.1037885,
+     -122.8813295
+    ],
+    [
+     50.1043406,
+     -122.8799947
+    ]
+   ]
+  },
+  {
+   "id": "hobbs-right-line",
+   "name": "Hobbs (Right)",
+   "bowl": "Diamond Bowl",
+   "path": [
+    [
+     50.1012205,
+     -122.8781882
+    ],
+    [
+     50.1012213,
+     -122.878033
+    ],
+    [
+     50.1012007,
+     -122.8778959
+    ],
+    [
+     50.1011696,
+     -122.877775
+    ],
+    [
+     50.1010655,
+     -122.8775626
+    ],
+    [
+     50.1010214,
+     -122.8774065
+    ],
+    [
+     50.1010254,
+     -122.8771879
+    ],
+    [
+     50.1010735,
+     -122.8769818
+    ],
+    [
+     50.1011616,
+     -122.8767632
+    ],
+    [
+     50.101255,
+     -122.8765859
+    ]
+   ]
+  },
+  {
+   "id": "diamond-bowl-line",
+   "name": "Diamond Bowl",
+   "bowl": "Diamond Bowl",
+   "path": [
+    [
+     50.1005083,
+     -122.877631
+    ],
+    [
+     50.1005709,
+     -122.877396
+    ],
+    [
+     50.100637,
+     -122.8772129
+    ],
+    [
+     50.1007295,
+     -122.8770576
+    ],
+    [
+     50.1008024,
+     -122.8769707
+    ],
+    [
+     50.1011894,
+     -122.8766375
+    ],
+    [
+     50.101255,
+     -122.8765859
+    ],
+    [
+     50.1017109,
+     -122.8762276
+    ],
+    [
+     50.1017613,
+     -122.876188
+    ],
+    [
+     50.1020483,
+     -122.8759698
     ]
    ]
   }
@@ -2684,24 +4194,121 @@
    ]
   }
  ],
- "plans": {
-  "beginner": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "intermediate": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "advanced": {
-   "off_limits": [],
-   "reroutes": []
-  },
-  "expert": {
-   "off_limits": [],
-   "reroutes": []
-  }
+ "route": {
+  "bowls": [
+   {
+    "zone_id": "garnet-bowl",
+    "recommended_line_id": "garnet-bowl-right-line",
+    "why": "Highest hazard count today; Garnet Bowl Right clears three active cliff zones.",
+    "line_note": null
+   },
+   {
+    "zone_id": "ruby-bowl",
+    "recommended_line_id": "shredder-line",
+    "why": "Shredder guides the long Ruby Bowl cliff band under 22 cm.",
+    "line_note": null
+   },
+   {
+    "zone_id": "diamond-bowl",
+    "recommended_line_id": "hobbs-right-line",
+    "why": "Hobbs (Right) guides two active Diamond cliffs under 22 cm and gusts.",
+    "line_note": null
+   }
+  ],
+  "cliff_guidance": [
+   {
+    "zone_id": "spankys-cliff-band-1",
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Wind-loaded cliff band at the entrance; Garnet Bowl Right is loaded too.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "garnet-cliff-band-1",
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Garnet Bowl Center cliff band; Garnet Bowl Right sits under new snow.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "diamond-cliff-band-1",
+    "line_id": "garnet-bowl-right-line",
+    "spoken": "Cliff band beside Wild Thing; Garnet Bowl Right remains wind loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "garnet-cliff-band-2",
+    "line_id": null,
+    "spoken": "Garnet-Diamond cliff band today; Garnet Bowl Left is wind loaded too.",
+    "line_note": null
+   },
+   {
+    "zone_id": "ruby-cliff-band-1",
+    "line_id": "shredder-line",
+    "spoken": "Long Ruby Bowl cliff band under 22 cm; Shredder is wind loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "diamond-cliff-band-3",
+    "line_id": null,
+    "spoken": "Cliff band beside Wild Thing, 22 cm new snow; Diamond Bowl loaded.",
+    "line_note": null
+   },
+   {
+    "zone_id": "diamond-cliff-band-2",
+    "line_id": "hobbs-right-line",
+    "spoken": "Helter Skelter entrance cliff; Hobbs (Right) is wind loaded today.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "sapphire-cliff-band-1",
+    "line_id": null,
+    "spoken": "Sapphire Chutes cliff band, 22 cm new snow; no listed line.",
+    "line_note": null
+   },
+   {
+    "zone_id": "spankys-cliff-band-2",
+    "line_id": null,
+    "spoken": "Cliff band between Spanky's Chute and Shoulder; Garnet Bowl Left is loaded.",
+    "line_note": null
+   },
+   {
+    "zone_id": "diamond-cliff-band-4",
+    "line_id": null,
+    "spoken": "Zut Zut cliff band, gusts 52 km/h; Diamond Bowl is loaded too.",
+    "line_note": null
+   },
+   {
+    "zone_id": "diamond-cliff-band-5",
+    "line_id": "hobbs-right-line",
+    "spoken": "Bad Attitude cliff band, 22 cm new snow; Hobbs (Right) is loaded.",
+    "line_note": null,
+    "line_id_from": "bowl recommendation"
+   },
+   {
+    "zone_id": "showcase-cliff-band-1",
+    "line_id": null,
+    "spoken": "Showcase and Blackcomb Glacier cliff band; no listed line covers it today.",
+    "line_note": null
+   }
+  ],
+  "hard_limits": [
+   {
+    "zone_id": "spankys-closure-1",
+    "spoken": "Spanky's closure by Showcase Bowl, permanently closed."
+   },
+   {
+    "zone_id": "chimney-ladder-closure-1",
+    "spoken": "Chimney Ladder and Grey Zone closure, permanently closed."
+   }
+  ]
  },
- "notes_for_incident_responder": null,
- "complete": false
+ "notes_for_incident_responder": [
+  "Avalanche danger unrated for 2026-02-22 (no archived forecast); 22.3 cm new snow and gusts to 51.8 km/h.",
+  "Visibility was not recorded; sightlines to the cliff bands are unverified.",
+  "Hard limits in force: Spanky's closure toward Showcase Bowl; Chimney Ladder and Grey Zone closure."
+ ]
 }

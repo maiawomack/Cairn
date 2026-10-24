@@ -236,7 +236,7 @@ def run_agent(role, inputs, on_status=None):
 REQUIRED_KEYS = {
     "conditions": {"weather", "avalanche"},
     "terrain": {"zones"},
-    "route": {"plans"},
+    "route": {"bowls", "cliff_guidance"},
     "incident": set(),
 }
 
