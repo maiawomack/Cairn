@@ -1,0 +1,191 @@
+# Cairn
+
+Cairn is a voice safety agent for skiers. It warns intermediate skiers before they ski into cliff terrain and talks them onto a safe line. Built solo by Maia at Cal Hacks 13 (submission due Sunday Oct 25, 10am PT).
+
+Why it exists: two years ago a family friend skied off a cliff at Spanky's Ladder on Whistler Blackcomb and broke his jaw in four places. The demo is scoped to that area.
+
+## How to work with me
+
+- Make small, step by step changes. Never rewrite a whole file when an edit will do.
+- Before a change, say in one or two sentences what you will change and why. After, say what changed.
+- Ask before adding a new dependency or changing the architecture below.
+- Prefer simple, readable code over clever code. Plain Python and plain JavaScript are preferred.
+- Never invent API fields, endpoints, model names or voice IDs. If unsure, read the docs linked below or ask me.
+- Never put API keys in code, the frontend, or git. Keys live in `.env` only. Keep `.env.example` updated with empty values.
+- Commit small, working steps with clear messages.
+
+## The one thing that must always work
+
+Scenario 2: a simulated intermediate skier drifts toward the cliff band and hears a spoken warning plus a safe line, early enough to stop. Protect this flow above everything else.
+
+## Architecture
+
+Two layers.
+
+**1. Creao agents (slow, the core intelligence).** Four role agents built and saved by Maia in the agent.creao.ai UI, chained in a workflow. Runs take minutes and do not stream, so they run before skiing (or on a schedule), never inside the real time loop.
+
+1. Conditions Analyst: forecast, avalanche rating, closures for the day
+2. Terrain Scout: marks today's hazard zones around Spanky's Ladder
+3. Route Planner: produces safe zones and safe exits for each ability level
+4. Incident Responder: after a crash check in fails, writes the incident report and sends it to the patrol console (simulated)
+
+The Route Planner's output is the hazard map JSON that the fast path runs on. Without it Cairn cannot warn anyone. This is the Creao judging requirement: a Creao agent does the core work.
+
+**2. Fast path (our code, real time).**
+
+GPS replay → smoothing → geofence check against the hazard map → Claude writes the spoken warning and reroute → Cartesia Sonic speaks it → dashboard shows everything.
+
+Hard rule: geofence hits inside a cliff zone ALWAYS trigger a warning, even if Claude fails, is slow, or disagrees. Claude chooses the wording and the reroute, never whether a cliff exists. If Claude takes longer than about 1.5 seconds, speak a template warning from the hazard zone instead.
+
+## Stack
+
+- Backend: Python, FastAPI
+- Frontend: one HTML page with plain JavaScript and Leaflet for the map
+- Map data: OpenSkiMap / OpenStreetMap export for Blackcomb as GeoJSON, plus hand drawn hazard polygons
+- Live updates to the dashboard: WebSocket or Server Sent Events from the backend
+- Claude: Anthropic API, called from the backend only. Use a fast current model; check the Anthropic docs for the exact model name rather than guessing.
+- Voice: Cartesia (rules below)
+- Creao: API Trigger, called from the backend only (rules below)
+
+## Suggested layout
+
+```
+cairn/
+  backend/
+    main.py            FastAPI app, websocket to dashboard
+    replay.py          plays a GPS track in real time
+    tracks.py          generates scenario tracks with speed changes and GPS noise
+    geofence.py        smoothing + distance to hazard zones
+    coordinator.py     Claude call that writes warning text and reroute
+    voice.py           Cartesia Sonic calls
+    creao_client.py    triggers Creao runs, polls or receives webhooks
+    scenarios.py       runs the test scenarios and prints pass/fail
+  data/
+    blackcomb_runs.geojson
+    hazard_zones.geojson
+    hazard_map.cached.json   saved output of a real Creao run, used for the demo
+    tracks/            generated scenario tracks
+  frontend/
+    index.html
+    app.js
+  .env.example
+  README.md
+```
+
+## Data formats
+
+Hazard map (Route Planner output, cached in `hazard_map.cached.json`):
+
+```json
+{
+  "generated_at": "ISO timestamp",
+  "creao_run_link": "share link for the README",
+  "conditions": { "summary": "string", "avalanche_rating": "string" },
+  "zones": [
+    {
+      "id": "spankys-cliff-band-1",
+      "type": "cliff | closure | expert_terrain",
+      "severity": "high | medium",
+      "polygon": [[lat, lon], "..."],
+      "applies_to": ["beginner", "intermediate"],
+      "hint": "short description of the danger"
+    }
+  ],
+  "safe_exits": [
+    { "from_zone": "spankys-cliff-band-1", "description": "Traverse skier's left to the groomer", "path": [[lat, lon], "..."] }
+  ]
+}
+```
+
+Adjust the schema to whatever the Creao agent actually returns, but keep the fast path reading only this shape.
+
+Agent messages on the dashboard log: `{ "from": "skier | terrain | coordinator | voice | creao:<role>", "type": "string", "data": {}, "time": "ISO timestamp" }`.
+
+Units are metric (meters, km/h).
+
+## Crash check in flow
+
+Triggered when the skier was moving fast, then stops suddenly and stays still (tune thresholds in one config place).
+
+1. The Cartesia Managed Agent speaks: "Hey, it looks like you stopped suddenly. Are you okay? If I don't hear from you in 30 seconds, I'll alert ski patrol."
+2. A visible countdown starts on the dashboard.
+3. At 10 seconds left, it speaks once more: "Alerting ski patrol in 10 seconds unless you tell me you're okay."
+4. Skier says they're okay → cancel, log it, say "Glad you're okay. I'll keep watching."
+5. Skier asks for help, or the countdown ends with no reply → escalate immediately: say "Alerting ski patrol now with your location. Stay where you are." Then trigger the Incident Responder and post the incident to the patrol console.
+6. Any movement back to normal skiing speed also cancels the countdown.
+
+Keep the 30 and 10 second values in config. This voice filter is the pitch: unlike phone crash detection, Cairn only escalates after the skier fails to respond.
+
+## Patrol console (small feature, build after the core loop)
+
+A second view on the same dashboard, toggled with a "Skier view / Patrol view" switch, fed by the same backend stream. Clearly labeled "Simulated: no real patrol is contacted."
+
+- Map of the area with incident pins and active countdowns
+- Incident cards: time, location, last speed, what the skier said (or "no response"), the Incident Responder's report, status (countdown, cancelled, escalated)
+- Near misses: skiers who got a cliff warning, as small markers
+
+Keep it to one panel and one list. No auth, no history beyond the current session.
+
+## Dashboard design
+
+Vibe: a field map. Calm paper map by default, loud only during a warning, matching the voice design. References: an illustrated resort trail map, a USGS topo map, and a clean Japanese hiking map. Use them as style references only; do not use the resort's trail map artwork as a layer.
+
+- Base map: OpenTopoMap tiles in Leaflet (contour lines, hillshade), with required attribution. Soften with a cream overlay if needed.
+- Palette (define once as CSS variables): paper cream background, contour brown, hazard red, route purple, slate text. Avoid bright UI blues.
+- Hazards use skier map language: red diagonal hatching for cliff areas and permanently closed areas, orange dashed line for the ski area boundary. Use SVG patterns for hatching.
+- Routes: the skier's track and safe exits as clean purple lines with small direction arrows, like hiking map routes.
+- Skier: a small dot with a fading trail of recent positions.
+- Type: a crisp serif for map labels and headings, monospace for the agent log.
+- Agent log as a field notebook: side panel on the same paper, one entry per message, small icon per agent, timestamp, short text.
+- Agent org chart: a small panel showing the Creao roles (Conditions Analyst → Terrain Scout → Route Planner → Incident Responder) with Maia as founder on top, each lighting up when it runs.
+- Warning state: the hazard zone pulses red, a banner shows the exact words being spoken, and the safe exit line draws itself in.
+- Check in state: a large, readable countdown ring in the corner.
+- Layout: map takes most of the screen, notebook log on the right, org chart and banners overlaid on the map. Must read well on a projector.
+
+## Demo mode
+
+The demo must never wait minutes for Creao. Demo mode loads `hazard_map.cached.json` from a real earlier run and replays a track. A separate button or command triggers a live Creao run in the background to show it really works.
+
+## Test scenarios
+
+`scenarios.py` runs each and prints expected vs actual.
+
+1. Intermediate stays on the groomer → silence
+2. Intermediate drifts toward the cliff band → warning early enough to stop, plus safe line
+3. Expert enters the bowl on purpose → no alarm
+4. GPS jumps near the cliff for 2 seconds → no warning from one noisy point
+5. Fast run, sudden stop, no movement → voice check in with 30 second countdown, then escalate to Incident Responder and patrol console
+5b. Same stop, skier says "I'm okay" → countdown cancelled, no escalation
+6. Closed run ahead → reroute before the closure
+
+## Cartesia rules
+
+- Read https://docs.cartesia.ai/llms.txt before writing Cartesia code. Do not invent fields or voice IDs.
+- Base URL https://api.cartesia.ai (WebSockets wss://). Send the Cartesia-Version header on every request; default `2026-08-14`.
+- Use the official Python SDK (`pip install cartesia`) and model `sonic-3.6` for text to speech.
+- Stream warnings over the WebSocket TTS API so speech starts before generation finishes.
+- Use `generation_config` for speed, volume and emotion: cliff warnings firm and quick, reroutes calm.
+- The crash check in uses a Cartesia Managed Agent (two way voice). Do NOT use the Line SDK; it is being retired.
+- Keys stay on the backend. If the browser ever calls Cartesia directly, the backend mints a short lived access token.
+
+## Creao rules
+
+- Docs: https://community.creao.ai/CalHacks2026 (Quickstart, Agents, API Trigger, Workflows, Secrets). Read them before writing Creao code.
+- Agents are created and saved by Maia in the agent.creao.ai UI. The API only runs agents.
+- Runs take minutes and do not stream. Use async runs with webhooks or polling, show progress in the UI, never hold a request open.
+- Every run spends credits. Never let an agent trigger itself, and never trigger runs in a loop.
+- The `capi_` key is server side only, never in frontend or repo code.
+
+## README must include
+
+- One line on who it's for: intermediate skiers at Whistler Blackcomb
+- Creao run share link and every agent ID
+- Cartesia features used and known limitations
+- Where Claude is used and how it could go wrong (GPS drift, outdated map, overconfidence) and the mitigations
+- What is real vs simulated
+- Setup steps
+- Note that Cairn supplements signage and ski patrol and never replaces them
+
+## Out of scope
+
+Native mobile app, real on snow GPS, other resorts, accounts or login, group tracking, contacting real ski patrol or 911. Patrol contact is simulated in the patrol console only.

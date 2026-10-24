@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (if you add any JS tooling)
+node_modules/
+
+# Generated audio and scratch files
+*.wav
+*.mp3
+tmp/
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/
