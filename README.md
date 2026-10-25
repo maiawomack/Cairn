@@ -20,7 +20,7 @@ cp .env.example .env          # then fill in the keys and IDs (never commit .env
 
 ## Live demo
 
-Public URL: **TODO** (Render, e.g. `https://cairn-xxxx.onrender.com`; the free tier sleeps, so the first load can take 30-50 s).
+Public URL: **https://cairn-nvjo.onrender.com/** (Render free tier; it sleeps when idle, so the first load can take 30-50 s).
 
 One Render web service runs the backend and serves the dashboard (`render.yaml`: `pip install -r requirements.txt`, then `uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT`). The browser only uses relative URLs, so no CORS or API base URL is needed. GitHub Pages cannot host it (static only).
 
