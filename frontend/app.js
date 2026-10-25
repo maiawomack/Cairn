@@ -41,8 +41,6 @@ const style = {
     runs: { type: "geojson", data: "/data/blackcomb_runs.geojson", attribution: OSM_ATTRIBUTION },
     // Built by build_hazard_zones.py from OSM cliffs and closures within 500 m of Spanky's.
     zones: { type: "geojson", data: "/data/hazard_zones.geojson" },
-    // Proposed by build_safe_exits.py, not yet reviewed.
-    exits: { type: "geojson", data: "/data/safe_exits.geojson" },
     skier: { type: "geojson", data: emptyCollection() },
     "skier-trail": { type: "geojson", data: emptyCollection() },
     "raw-gps": { type: "geojson", data: emptyCollection() },
@@ -173,7 +171,7 @@ const HAZARD_LAYERS = [
 
 const ROUTE_COLOR = "#5b3f8c";
 
-// Proposed safe exits, and the replayed skier: a dot with a fading trail of recent fixes.
+// The replayed skier: a dot with a fading trail of recent fixes (plus the safe line a cliff alert offers).
 // Added after the hazard layers so they draw on top.
 const TOP_LAYERS = [
   {
@@ -183,13 +181,6 @@ const TOP_LAYERS = [
     source: "zones",
     filter: ["==", ["get", "id"], ""],
     paint: { "line-color": HAZARD_COLOR, "line-width": 0, "line-opacity": 0.9 },
-  },
-  {
-    id: "exits",
-    type: "line",
-    source: "exits",
-    layout: { visibility: "none", "line-cap": "round" },
-    paint: { "line-color": ROUTE_COLOR, "line-width": 2.5, "line-opacity": 0.85 },
   },
   {
     // The line a cliff alert offered: dashed while offered, solid with a glow once the skier is on it.
@@ -261,7 +252,6 @@ const LAYER_GROUPS = {
   runs: ["runs", "runs-hover"],
   lifts: ["lifts", "lifts-hover"],
   hazards: HAZARD_LAYERS.map((layer) => layer.id),
-  exits: ["exits"],
 };
 
 function emptyCollection() {
@@ -533,6 +523,11 @@ const runButton = document.getElementById("run-agents");
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
   const response = await fetch("/api/agents/run", { method: "POST" });
+  if (response.status === 403) {
+    runButton.disabled = false;
+    addLogLine({ from: "creao:orchestrator", type: "disabled in public demo", data: { error: (await response.json()).reason }, time: new Date().toISOString() });
+    return;
+  }
   if (response.status === 409) addLogLine({ from: "creao:orchestrator", type: "already running", time: new Date().toISOString() });
 });
 
@@ -552,6 +547,8 @@ agentEvents.onmessage = (event) => {
     if (message.type === "finished") loadConditions();
   }
   if (!isCreao) updateCodeBox(message, fresh);
+  if (message.from === "checkin") handleCheckin(message, fresh);
+  if (message.from === "patrol") handlePatrol(message);
   if (fresh && role === "coordinator" && message.type === "decision") {
     showBanner(message.data);
     showSafeLine(message.data);
@@ -601,9 +598,13 @@ function clearSafeLine() {
 
 // Browsers only allow audio after a click, so the context starts on the first one.
 let audioContext = null;
+const soundPrompt = document.getElementById("sound-prompt");
 document.addEventListener("click", () => {
   audioContext ??= new AudioContext();
   audioContext.resume();
+  soundPrompt.hidden = true;
+  // Speech synthesis is also blocked until a gesture; this primes it for the no-Cartesia fallback.
+  if ("speechSynthesis" in window) window.speechSynthesis.resume();
 });
 
 const utterances = {}; // utterance id -> { sampleRate, nextTime, leftover }
@@ -710,7 +711,10 @@ function setOrgBox(role, state, runText) {
 
 function lastRunText(role) {
   const run = agentState[role].lastRun;
-  if (!run) return role === "incident" ? "no incidents" : "not run yet";
+  if (!run) return role === "incident" ? "standby" : "not run yet";
+  if (run.run_id === "simulated") {
+    return `simulated report · ${new Date(run.finished_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+  }
   const when = new Date(run.finished_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   return `last run ${run.duration_s} s · ${when}`;
 }
@@ -842,7 +846,9 @@ for (const box of document.querySelectorAll(".org-box[data-role]")) {
     const role = box.dataset.role;
     const { lastRun, output } = agentState[role];
     document.getElementById("agent-output-title").textContent = AGENT_TITLES[role];
-    document.getElementById("agent-output-meta").textContent = lastRun
+    document.getElementById("agent-output-meta").textContent = lastRun && lastRun.run_id === "simulated"
+      ? `${lastRunText(role)} (no Creao run)`
+      : lastRun
       ? `run ${lastRun.run_id.slice(0, 8)} · ${lastRun.duration_s} s · finished ${new Date(lastRun.finished_at).toLocaleString()}`
       : lastRunText(role);
     document.getElementById("agent-output-body").textContent = output ? JSON.stringify(output, null, 2) : "No output yet.";
@@ -863,7 +869,9 @@ function addLogLine(message) {
   const detail = data.status
     ? `${data.status}${data.first_audio_ms != null ? `, first audio ${data.first_audio_ms} ms` : ""}${data.reason ? `: ${data.reason}` : ""}`
     : data.line
-    ? `"${data.line}" (${data.path}${data.path === "claude" ? `, ${data.claude_ms} ms` : `: ${data.claude_reason}`})`
+    ? `"${data.line}"${data.path ? ` (${data.path}${data.path === "claude" ? `, ${data.claude_ms} ms` : `: ${data.claude_reason}`})` : ""}`
+    : data.reasons
+      ? `refused: ${data.reasons.join("; ")}`
     : data.zone_id
       ? `${data.zone_id} ${data.distance_m} m (${data.reason}, ${data.speed_kmh} km/h)`
       : data.error || data.status || "";
@@ -902,3 +910,145 @@ async function loadConditions() {
 }
 
 loadConditions();
+
+
+// ---- Crash check-in: countdown ring, demo reply buttons, simulated patrol console ----
+// SIMULATED: nothing here contacts real patrol or 911. The reply buttons stand in for a microphone.
+
+const checkinBox = document.getElementById("checkin");
+const RING_LENGTH = 377; // 2 * pi * r (r = 60)
+const checkinRun = { active: false, startedAt: 0, countdown: 30 };
+let checkinHideTimer = null;
+
+function checkinLeft() {
+  return Math.max(0, checkinRun.countdown - (Date.now() - checkinRun.startedAt) / 1000);
+}
+
+function drawCheckin() {
+  if (checkinRun.active) {
+    const left = checkinLeft();
+    document.getElementById("ring-fill").style.strokeDashoffset = String(RING_LENGTH * (1 - left / checkinRun.countdown));
+    document.getElementById("checkin-count").textContent = String(Math.ceil(left));
+    requestAnimationFrame(drawCheckin);
+  }
+}
+
+function endCheckin(title, kind) {
+  checkinRun.active = false;
+  checkinBox.classList.remove("urgent");
+  checkinBox.classList.add("done");
+  document.getElementById("checkin-title").textContent = title;
+  document.getElementById("checkin-count").textContent = kind === "cancelled" ? "✓" : "!";
+  clearTimeout(checkinHideTimer);
+  checkinHideTimer = setTimeout(() => { checkinBox.hidden = true; }, 6000);
+}
+
+function handleCheckin(message, fresh) {
+  const { type, data } = message;
+  if (type === "say" && fresh) {
+    // The scripted line as the banner: calm for the question and the cancel, urgent only for the escalation.
+    showBanner({ level: data.kind === "escalated" ? "warning" : data.kind === "reminder" ? "guidance" : "briefing",
+                 line: data.line, zone_id: "check-in", path: "scripted" });
+  }
+  if (!fresh) return;
+  if (type === "ask") {
+    clearTimeout(checkinHideTimer);
+    checkinRun.active = true;
+    checkinRun.startedAt = Date.parse(message.time);
+    checkinRun.countdown = data.countdown_s;
+    checkinBox.classList.remove("urgent", "done");
+    checkinBox.hidden = false;
+    document.getElementById("checkin-title").textContent = "Are you okay?";
+    requestAnimationFrame(drawCheckin);
+  } else if (type === "reminder") {
+    checkinBox.classList.add("urgent");
+  } else if (type === "cancelled") {
+    endCheckin(data.by === "moving" ? "Moving again" : "Glad you're okay", "cancelled");
+  } else if (type === "escalated") {
+    endCheckin("Patrol alerted (simulated)", "escalated");
+  }
+}
+
+for (const button of document.querySelectorAll(".checkin-buttons button")) {
+  button.addEventListener("click", () => fetch(`/api/checkin/reply?said=${button.dataset.said}`, { method: "POST" }));
+}
+
+// Patrol console.
+const incidents = new Map(); // id -> incident
+const incidentPins = new Map(); // id -> maplibre marker
+
+function handlePatrol(message) {
+  // The server only publishes an incident when a check-in escalates; cancelled check-ins never get here.
+  const incident = message.data;
+  incidents.set(incident.id, incident);
+  renderPatrol();
+  if (incident.report) {
+    // The Incident Responder box reads "simulated report" with the report as its last output.
+    agentState.incident = { lastRun: { run_id: "simulated", duration_s: 0, finished_at: new Date().toISOString() },
+                            output: { incident: incident.id, source: incident.report_source, report: incident.report } };
+    setOrgBox("incident", "done", lastRunText("incident"));
+  }
+}
+
+function dl(rows) {
+  const list = document.createElement("dl");
+  for (const [term, value] of rows) {
+    list.append(Object.assign(document.createElement("dt"), { textContent: term }),
+                Object.assign(document.createElement("dd"), { textContent: value }));
+  }
+  return list;
+}
+
+function renderPatrol() {
+  const container = document.getElementById("incident-cards");
+  const cards = [...incidents.values()].sort((a, b) => b.id - a.id).map((incident) => {
+    const card = document.createElement("div");
+    card.className = `incident-card ${incident.status}`;
+    const header = document.createElement("header");
+    const when = new Date(incident.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    header.append(Object.assign(document.createElement("b"), { textContent: `Incident ${incident.id} · ${when}` }),
+                  Object.assign(document.createElement("span"), { className: "chip", textContent: incident.status }));
+    const loc = incident.location;
+    card.append(header, dl([
+      ["Status", incident.status],
+      ["Where", `${loc.area || "Glacier bowls"} (${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)})`],
+      ["Last speed", `${incident.last_speed_kmh} km/h`],
+      ["Skier said", incident.skier_said || "(waiting)"],
+    ]));
+    if (incident.report) {
+      card.append(Object.assign(document.createElement("pre"), { textContent: incident.report }),
+                  Object.assign(document.createElement("div"), { className: "source", textContent: `Report: ${incident.report_source}` }));
+    }
+    return card;
+  });
+  container.replaceChildren(...cards);
+  document.getElementById("patrol-empty").hidden = incidents.size > 0;
+  for (const incident of incidents.values()) {
+    let pin = incidentPins.get(incident.id);
+    if (!pin) {
+      pin = new maplibregl.Marker({ element: Object.assign(document.createElement("div"), { className: "incident-pin" }) })
+        .setLngLat([incident.location.lon, incident.location.lat]).addTo(map);
+      incidentPins.set(incident.id, pin);
+    }
+    pin.getElement().className = `incident-pin ${incident.status}`;
+  }
+}
+
+fetch("/api/patrol/incidents").then((r) => r.json()).then((list) => {
+  for (const incident of list) incidents.set(incident.id, incident);
+  renderPatrol();
+});
+
+document.getElementById("incident-live-run").addEventListener("click", async () => {
+  const response = await fetch("/api/incident/live-run", { method: "POST" });
+  const body = await response.json();
+  addLogLine({ from: "creao:incident", type: body.status, data: { error: body.reason }, time: new Date().toISOString() });
+});
+
+// Skier view / Patrol view.
+for (const button of document.querySelectorAll("[data-view]")) {
+  button.addEventListener("click", () => {
+    document.body.classList.toggle("patrol", button.dataset.view === "patrol");
+    for (const other of document.querySelectorAll("[data-view]")) other.classList.toggle("playing", other === button);
+  });
+}

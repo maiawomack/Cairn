@@ -112,6 +112,7 @@ class Geofence:
         self.streak = {}  # zone id -> consecutive fixes in range
         self.sent = set()  # (zone id, level) already alerted
         self.rejected_in_a_row = 0
+        self.speed_ms = None  # smoothed speed after the latest accepted fix
         self.last_warning = None  # (t, zone id) of the latest warning
         # The safe line each cliff alert offers, and the lines being watched for "on_line".
         self.lines_offered = {z["id"]: offered_line(hazard_map, z) for z in hazard_map["zones"] if z["type"] == "cliff"}
@@ -147,6 +148,7 @@ class Geofence:
             position, speed, heading = (x, y), 0.0, None
 
         self.smoothed = to_latlon(position)
+        self.speed_ms = speed if len(self.fixes) >= 3 else None  # for the crash detector
         cliff_hits = self._cliff_hits(position, speed, heading)
         warnings = []
         for zone in self.zones:
