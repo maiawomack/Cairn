@@ -249,10 +249,22 @@ def patrol_incidents():
     return incident.INCIDENTS
 
 
+PUBLIC_DEMO = os.environ.get("CAIRN_PUBLIC_DEMO", "").strip().lower() in ("1", "true", "yes")
+
+
+def _disabled_in_public_demo():
+    """The answer for every endpoint that would spend Creao credits when CAIRN_PUBLIC_DEMO is set."""
+    return JSONResponse({"status": "disabled_in_public_demo",
+                         "reason": "Live agent runs are turned off in the public demo (they spend credits). "
+                                   "The demo uses the saved hazard map from a real Creao run."}, status_code=403)
+
+
 @app.post("/api/incident/live-run")
 def incident_live_run():
     """A live Incident Responder run on Creao would spend credits, so it is its own explicit action.
     Not wired yet: it needs the agent's input fields (its config.yaml)."""
+    if PUBLIC_DEMO:
+        return _disabled_in_public_demo()
     return JSONResponse({"status": "not_wired", "reason": "A live Creao Incident Responder run needs that agent's "
                          "input fields (config.yaml); nothing was run and no credits were spent."}, status_code=501)
 
@@ -261,6 +273,7 @@ def incident_live_run():
 def health():
     """What is configured, as booleans and model names only (no keys, no ids)."""
     return {
+        "public_demo": PUBLIC_DEMO,
         "voice": voice_status(),
         "claude": {"api_key_set": bool(os.environ.get("ANTHROPIC_API_KEY")), "model": config.CLAUDE_MODEL},
         "checkin_agent": {"mode": "agent" if checkin_agent.configured() else "mock"},
@@ -305,6 +318,8 @@ def agents_state():
 @app.post("/api/agents/run")
 def run_agents():
     """Start the Creao chain in the background. Spends credits, so only one chain at a time."""
+    if PUBLIC_DEMO:
+        return _disabled_in_public_demo()
     if orchestrator.is_running():
         return JSONResponse({"status": "already_running"}, status_code=409)
 

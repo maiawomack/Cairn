@@ -18,6 +18,23 @@ cp .env.example .env          # then fill in the keys and IDs (never commit .env
 - On startup the server logs one voice line, and `GET /api/health` reports (without any key or id) whether Sonic, Claude and the check-in agent are configured: `voice: Cartesia Sonic (sonic-3.6), voice id from CARTESIA_VOICE_ID`, or a warning `voice: CARTESIA_VOICE_ID missing in .env -> browser speech fallback (no Sonic)`.
 - With no `ANTHROPIC_API_KEY` the spoken lines come from the agents' own lines or fixed templates; with no Cartesia key or voice id the dashboard speaks with the browser's own voice. Nothing is silent.
 
+## Live demo
+
+Public URL: **TODO** (Render, e.g. `https://cairn-xxxx.onrender.com`; the free tier sleeps, so the first load can take 30-50 s).
+
+One Render web service runs the backend and serves the dashboard (`render.yaml`: `pip install -r requirements.txt`, then `uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT`). The browser only uses relative URLs, so no CORS or API base URL is needed. GitHub Pages cannot host it (static only).
+
+**Public demo defaults** (`CAIRN_PUBLIC_DEMO=1`, set in `render.yaml`; no secrets are in git):
+- The hazard map is the saved one from a real Creao run (`data/hazard_map.cached.json`).
+- `POST /api/agents/run` and `POST /api/incident/live-run` answer `403 disabled_in_public_demo`, so no visitor can spend Creao credits. `GET /api/health` shows `public_demo: true`.
+- With `ANTHROPIC_API_KEY` unset, lines come from the Route Planner or fixed templates. With the Cartesia key unset, the browser's own voice speaks. With `CARTESIA_CHECKIN_AGENT_ID` blank, the crash check-in uses the mock path and the "Skier says" buttons.
+- Browsers block sound until a gesture, so the page shows "Tap anywhere to enable sound" until the first click (a scenario button counts).
+- The check-in state is shared by the whole server, so two visitors running a crash scenario at the same moment will interfere.
+
+To add Sonic to the public site, set `CARTESIA_API_KEY` and `CARTESIA_VOICE_ID` in the Render dashboard (each replay then spends Cartesia credits). Leave every `CREAO_*_API_KEY` unset.
+
+**Backup, for judging from a laptop:** `cloudflared tunnel --url http://localhost:8000` prints a temporary public URL for the locally running server, which uses your `.env`. Keep the Creao keys blank (or set `CAIRN_PUBLIC_DEMO=1` in the shell); Cartesia is optional for Sonic and the real check-in agent. The URL changes each run and the laptop must stay awake.
+
 ## Creao agents
 
 The hazard map comes from a chain of Creao agents built in the Creao UI (they run before skiing, never in the real time loop): Conditions Analyst, Terrain Scout, Route Planner, and the Incident Responder.

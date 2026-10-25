@@ -1,0 +1,16 @@
+# Public demo on Render (free web service). Secrets are never in this file: leave the API keys
+# unset for the public demo (cached hazard map, template/Route Planner lines, browser speech,
+# mock check-in). See README "Live demo".
+services:
+  - type: web
+    name: cairn
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.8
+      - key: CAIRN_PUBLIC_DEMO
+        value: "1"

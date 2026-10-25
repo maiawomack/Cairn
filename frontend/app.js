@@ -523,6 +523,11 @@ const runButton = document.getElementById("run-agents");
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
   const response = await fetch("/api/agents/run", { method: "POST" });
+  if (response.status === 403) {
+    runButton.disabled = false;
+    addLogLine({ from: "creao:orchestrator", type: "disabled in public demo", data: { error: (await response.json()).reason }, time: new Date().toISOString() });
+    return;
+  }
   if (response.status === 409) addLogLine({ from: "creao:orchestrator", type: "already running", time: new Date().toISOString() });
 });
 
@@ -593,9 +598,13 @@ function clearSafeLine() {
 
 // Browsers only allow audio after a click, so the context starts on the first one.
 let audioContext = null;
+const soundPrompt = document.getElementById("sound-prompt");
 document.addEventListener("click", () => {
   audioContext ??= new AudioContext();
   audioContext.resume();
+  soundPrompt.hidden = true;
+  // Speech synthesis is also blocked until a gesture; this primes it for the no-Cartesia fallback.
+  if ("speechSynthesis" in window) window.speechSynthesis.resume();
 });
 
 const utterances = {}; // utterance id -> { sampleRate, nextTime, leftover }
